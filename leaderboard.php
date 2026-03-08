@@ -5,10 +5,16 @@ if (!isset($_SESSION['player_id'])) {
     exit(); 
 }
 
-$db = new SQLite3('game.db');
+require_once "connect.php";
 
-// ดึงข้อมูลอันดับ เรียงจากคะแนนมากไปน้อย และด่านที่สูงที่สุด
-$results = $db->query("SELECT username, level_reached, score FROM players ORDER BY score DESC, level_reached DESC LIMIT 10");
+// ดึงอันดับ
+$results = pg_query(
+    $conn,
+    "SELECT username, level_reached, score
+     FROM players
+     ORDER BY score DESC, level_reached DESC
+     LIMIT 10"
+);
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -135,7 +141,7 @@ $results = $db->query("SELECT username, level_reached, score FROM players ORDER 
         <tbody>
             <?php 
             $rank = 1;
-            while ($row = $results->fetchArray(SQLITE3_ASSOC)): 
+        while ($row = pg_fetch_assoc($results)):
                 $class = "";
                 if($rank == 1) $class = "top-1";
                 elseif($rank == 2) $class = "top-2";

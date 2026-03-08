@@ -1,42 +1,59 @@
 <?php
-
+require_once "connect.php"; // ดึงการเชื่อมต่อจาก Supabase $conn
 
 session_start();
-// เปลี่ยนจาก error_reporting(0); เป็น 3 บรรทัดนี้
+
+// ตั้งค่าสำหรับการ Debug (ลบออกเมื่อขึ้น Production)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+$error = ""; // ประกาศตัวแปรไว้ก่อนเพื่อป้องกัน Notice
+
 if (isset($_POST['login'])) {
-    $db = new SQLite3('game.db');
     
-    // ดึงข้อมูลผู้เล่น
-    $stmt = $db->prepare("SELECT id, username, password, role FROM players WHERE username = :user");
-    $stmt->bindValue(':user', $_POST['username']);
-    $res = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+    $username = trim($_POST['username']);
+    $password = $_POST['password'];
 
-    // ตรวจสอบรหัสผ่าน
-    if ($res && password_verify($_POST['password'], $res['password'])) {
-        
-        // บันทึกค่าลง Session ให้ครบ
-        $_SESSION['player_id'] = $res['id'];
-        $_SESSION['player_name'] = $res['username'];
-        $_SESSION['role'] = (int)$res['role']; // สำคัญ: ต้องเก็บค่า 0 หรือ 1 ไว้
+    // 1. เปลี่ยน Query ให้ใช้ PostgreSQL (Supabase)
+    // ใช้ pg_query_params เพื่อความปลอดภัยสูงสุด
+    $result = pg_query_params(
+        $conn,
+        "SELECT id, username, password, role FROM players WHERE username = $1 LIMIT 1",
+        array($username)
+    );
 
-        // --- แยกเส้นทาง (Redirect Logic) ---
-        if ($_SESSION['role'] === 1) {
-            // ถ้าเป็น Admin ส่งไปหน้าจัดการ
-            header("Location: admin_manage.php");
+    if ($result) {
+        $res = pg_fetch_assoc($result);
+
+        // 2. ตรวจสอบรหัสผ่าน (Password Hash)
+        if ($res && password_verify($password, $res['password'])) {
+            
+            // บันทึกค่าลง Session
+            $_SESSION['player_id'] = $res['id'];
+            $_SESSION['player_name'] = $res['username'];
+            $_SESSION['role'] = (int)$res['role']; // เก็บค่า 0 หรือ 1
+
+            // --- แยกเส้นทาง (Redirect Logic) ---
+            if ($_SESSION['role'] === 1) {
+                // ถ้าเป็น Admin (role = 1)
+                header("Location: admin_manage.php");
+            } else {
+                // ถ้าเป็นผู้เล่นทั่วไป (role = 0)
+                header("Location: dashboard.php"); 
+            }
+            exit();
+
         } else {
-            // ถ้าเป็นผู้เล่นทั่วไป ส่งไปหน้าเล่นเกม (ปรับเป็น index.php ได้ตามต้องการ)
-            header("Location: dashboard.php"); 
+            // กรณีรหัสผ่านผิด หรือไม่พบชื่อผู้ใช้
+            $error = "CRITICAL_ERROR: INVALID_AUTHORIZATION_KEY";
         }
-        exit();
-
     } else {
-        $error = "CRITICAL_ERROR: INVALID_AUTHORIZATION_KEY";
+        // กรณีเชื่อมต่อฐานข้อมูลล้มเหลว หรือ Query ผิด
+        $error = "SYSTEM_FAILURE: DATABASE_CONNECTION_LOST";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -45,6 +62,7 @@ if (isset($_POST['login'])) {
     <title>Hacker King | Secure Login</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@400;700&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        /* CSS เดิมของคุณ (คงไว้ทั้งหมดเพื่อความสวยงาม) */
         :root {
             --primary: #a855f7;
             --primary-glow: rgba(168, 85, 247, 0.6);
@@ -68,7 +86,6 @@ if (isset($_POST['login'])) {
             background-image: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%);
         }
 
-        /* Scanline Effect */
         body::before {
             content: " ";
             position: fixed;
@@ -229,9 +246,9 @@ if (isset($_POST['login'])) {
         <button type="submit" name="login" class="btn-login">INITIATE_AUTH()</button>
     </form>
 
-    <?php if(isset($error)): ?>
+    <?php if($error !== ""): ?>
         <div class="error-box">
-            > <?php echo $error; ?>
+            > <?php echo htmlspecialchars($error); ?>
         </div>
     <?php endif; ?>
 

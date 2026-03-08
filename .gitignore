@@ -1,0 +1,17 @@
+# 1. ป้องกันไฟล์เชื่อมต่อฐานข้อมูลที่มี Password (สำคัญที่สุด!)
+connect.php
+config.php
+
+# 2. ป้องกันไฟล์ฐานข้อมูลเดิม (SQLite) เพราะคุณย้ายไป Supabase แล้ว
+*.db
+game.db
+
+# 3. ไฟล์ระบบและ IDE (ถ้ามี)
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 4. ไฟล์ Log และ Cache
+*.log
+npm-debug.log*

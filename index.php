@@ -6,13 +6,19 @@ if (!isset($_SESSION['player_id'])) {
 }
 
 error_reporting(0);
-$db = new SQLite3('game.db');
+require_once "connect.php";
 
 $player_id = $_SESSION['player_id'];
 $level = isset($_GET['level']) ? (int)$_GET['level'] : 1;
 
 // ดึงข้อมูลโจทย์จาก Database
-$challenge = $db->querySingle("SELECT * FROM challenges WHERE level_num = $level", true);
+$res = pg_query_params(
+    $conn,
+    "SELECT * FROM challenges WHERE level_num=$1",
+    [$level]
+);
+
+$challenge = pg_fetch_assoc($res);
 
 // ถ้าไม่มีด่านถัดไป (จบเกม) ให้ส่งไปหน้า Dashboard หรือหน้าจบ
 if (!$challenge && $level > 1) {
@@ -20,46 +26,45 @@ if (!$challenge && $level > 1) {
     exit();
 }
 
-$message = "";
-$query_display = "";
-$is_success = false;
+// --- ตรรกะเตรียมตัวแปรสำหรับการแสดงผล Query ---
+$user_val = ""; 
+$pass_val = "";
 
+// ถ้ามีการกดปุ่มเข้ามา ให้ดึงค่าที่พิมพ์มาใช้
 if (isset($_POST['login'])) {
-    $user_input = $_POST['username'];
-    $pass_input = $_POST['password'];
+    $user_val = $_POST['username'];
+    $pass_val = $_POST['password'];
     $time_spent = isset($_POST['time_spent']) ? (int)$_POST['time_spent'] : 0;
+}
 
-    // จำลอง Query แสดงผลตาม Logic ใน DB
-    $logic_type = $challenge['sql_logic'];
-    if ($logic_type == 'string') {
-        $query_display = "SELECT * FROM users WHERE username = '$user_input' AND password = '$pass_input'";
-    } elseif ($logic_type == 'numeric') {
-        $query_display = "SELECT * FROM users WHERE id = $user_input AND password = '$pass_input'";
-    } elseif ($logic_type == 'blind') {
-        $query_display = "SELECT * FROM users WHERE username = \"$user_input\" AND password = \"$pass_input\"";
-    }
+// สร้าง Query แสดงผลทันที (ไม่ว่าจะกดปุ่มหรือไม่ก็ตาม)
+$logic_type = $challenge['sql_logic'];
+if ($logic_type == 'string') {
+    $query_display = "SELECT * FROM users WHERE username = '$user_val' AND password = '$pass_val'";
+} elseif ($logic_type == 'numeric') {
+    // สำหรับ Numeric ถ้าเป็นค่าว่างให้แสดงเลข 0 หรือปล่อยว่างตามดีไซน์
+    $display_num = ($user_val === "") ? "" : $user_val;
+    $query_display = "SELECT * FROM users WHERE id = $display_num AND password = '$pass_val'";
+} elseif ($logic_type == 'blind') {
+    $query_display = "SELECT * FROM users WHERE username = \"$user_val\" AND password = \"$pass_val\"";
+}
 
-    // ตรวจสอบคำตอบ
-    if ($user_input === $challenge['target_identifier'] && ($challenge['access_key'] == "" || $pass_input === $challenge['access_key'])) {
+// --- ตรรกะตรวจสอบคำตอบ (เฉพาะเมื่อมีการ POST) ---
+if (isset($_POST['login'])) {
+    if ($user_val === $challenge['target_identifier'] && ($challenge['access_key'] == "" || $pass_val === $challenge['access_key'])) {
         $is_success = true;
         
         $base_score = 1000;
         $penalty = $time_spent * 2;
         $earned_score = max(100, $base_score - $penalty);
 
-        $stmt = $db->prepare("UPDATE players SET 
-                    level_reached = CASE WHEN level_reached <= :lvl THEN :next_lvl ELSE level_reached END,
-                    score = score + :scr
-                    WHERE id = :id");
-        $stmt->bindValue(':lvl', $level);
-        $stmt->bindValue(':next_lvl', $level + 1);
-        $stmt->bindValue(':scr', $earned_score);
-        $stmt->bindValue(':id', $player_id);
-        $stmt->execute();
+        pg_query_params(
+            $conn,
+            "UPDATE players SET level_reached = CASE WHEN level_reached <= $1 THEN $2 ELSE level_reached END, score = score + $3 WHERE id = $4",
+            [$level, $level + 1, $earned_score, $player_id]
+        );
 
         $message = "success|ACCESS GRANTED: Payload ถูกต้อง! กำลังพาคุณไปด่าน " . ($level + 1) . "...";
-        
-        // 🔥 AUTO REDIRECT: ไปด่านถัดไปใน 1.5 วินาที
         header("refresh:1.5;url=index.php?level=" . ($level + 1));
     } else {
         $message = "error|ACCESS DENIED: โครงสร้าง Query ผิดพลาด หรือรหัสไม่ถูกต้อง!";
@@ -85,7 +90,13 @@ $msg_text = $msg_parts[1] ?? '';
         #timer-display { background: #000; border: 1px solid var(--secondary); color: var(--secondary); padding: 5px 15px; border-radius: 4px; font-family: 'Fira Code'; }
         .container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); gap: 60px; padding: 40px; }
         .hacker-king-area { width: 350px; text-align: center; }
-        .king-image { width: 280px; filter: drop-shadow(0 0 30px var(--primary)); animation: king-float 4s ease-in-out infinite; }
+        .king-image { width: 280px; filter: drop-shadow(0 0 30px var(--primary)); animation: king-float 4s ease-in-out infinite, hacker-flicker 0.15s infinite;
+    }
+            @keyframes hacker-flicker {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.9; }
+        }
         @keyframes king-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
         .speech-bubble { background: var(--card-bg); border-left: 5px solid var(--primary); padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; font-size: 14px; }
         .game-card { background: var(--card-bg); border: 1px solid var(--border); width: 450px; padding: 40px; position: relative; }
@@ -120,7 +131,7 @@ $msg_text = $msg_parts[1] ?? '';
             <span style="color:var(--primary);">[KING_SAYS]:</span><br>
             <span id="king-text"><?php echo htmlspecialchars($challenge['description']); ?></span>
         </div>
-        <img src="https://i.ibb.co/LzYm6L2/hacker-king.png" class="king-image">
+        <img src="https://img.freepik.com/free-vector/colored-hacker-code-realistic-composition-with-person-creates-codes-hacking-stealing-information-vector-illustration_1284-18005.jpg?semt=ais_rp_50_assets&w=740&q=80" class="king-image">
         <div class="hint-btns">
             <button id="btn-hint-1" class="hint-btn" onclick="showHint(1)">HINT_1 (LOCKED: 30s)</button>
             <button id="btn-hint-2" class="hint-btn" onclick="showHint(2)">HINT_2 (LOCKED: 180s)</button>
@@ -133,7 +144,7 @@ $msg_text = $msg_parts[1] ?? '';
         <form method="POST" onsubmit="sessionStorage.setItem('hacker_timer', totalSeconds);">
             <input type="hidden" name="time_spent" id="time_spent_input" value="0">
             <label style="font-size:10px; color:var(--primary); font-family:'Fira Code';">TARGET_IDENTIFIER</label>
-            <input type="text" name="username" placeholder="Payload..." required autocomplete="off" autofocus>
+            <input type="text" name="username" placeholder="Payload..."  autocomplete="off" autofocus>
             <label style="font-size:10px; color:var(--primary); font-family:'Fira Code';">ACCESS_KEY</label>
             <input type="password" name="password" placeholder="********">
             <button type="submit" name="login" class="btn-execute">EXECUTE_EXPLOIT()</button>

@@ -5,24 +5,42 @@ if (!isset($_SESSION['player_id'])) {
     exit(); 
 }
 
-$db = new SQLite3('game.db');
+require_once "connect.php";
 
-// 1. ดึงข้อมูลผู้เล่นปัจจุบัน
-$stmt = $db->prepare("SELECT * FROM players WHERE id = :id");
-$stmt->bindValue(':id', $_SESSION['player_id'], SQLITE3_INTEGER);
-$player = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+/* -------------------
+   PLAYER DATA
+------------------- */
+
+$res = pg_query_params(
+    $conn,
+    "SELECT * FROM players WHERE id=$1",
+    [$_SESSION['player_id']]
+);
+
+$player = pg_fetch_assoc($res);
 
 $level_reached = $player['level_reached'] ?? 1;
 $total_score   = $player['score'] ?? 0;
 $user_role     = (int)($player['role'] ?? 0);
 
-// 2. ดึงจำนวนโจทย์ทั้งหมด
-$total_levels = $db->querySingle("SELECT COUNT(*) FROM challenges") ?: 1; 
-$progress_pct = round((($level_reached - 1) / $total_levels) * 100);
+/* -------------------
+   TOTAL LEVELS
+------------------- */
 
-// 3. ดึงรายการโจทย์ทั้งหมด
-$challenges_res = $db->query("SELECT * FROM challenges ORDER BY level_num ASC");
+$res_total = pg_query($conn,"SELECT COUNT(*) FROM challenges");
+$row_total = pg_fetch_row($res_total);
+$total_levels = $row_total[0] ?: 1;
+// ล็อคค่าไว้ไม่ให้เกิน 100% แม้ข้อมูลใน DB จะผิดพลาด
+$progress_pct = min(100, round((($level_reached - 1) / $total_levels) * 100));
+
+/* -------------------
+   LOAD CHALLENGES
+------------------- */
+
+$challenges_res = pg_query($conn,"SELECT * FROM challenges ORDER BY level_num ASC");
+
 ?>
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -61,9 +79,22 @@ $challenges_res = $db->query("SELECT * FROM challenges ORDER BY level_num ASC");
         .hero-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 40px; }
         .welcome-card { background: var(--card-bg); border: 1px solid var(--border); padding: 30px; border-left: 5px solid var(--primary); }
         .welcome-card h1 { font-family: 'Orbitron', sans-serif; color: var(--secondary); margin: 10px 0; font-size: 28px; }
-        .progress-container { margin-top: 25px; background: #000; padding: 2px; border: 1px solid var(--border); }
-        .progress-bar { height: 8px; background: linear-gradient(90deg, var(--primary), var(--secondary)); box-shadow: 0 0 15px var(--primary); transition: width 1s ease-in-out; }
-        
+        .progress-container {
+    width: 100%;       /* ให้ขยายเต็มที่ในพื้นที่ที่ได้รับ */
+    max-width: 600px;  /* แต่ห้ามยาวเกิน 600px (ปรับเลขตามชอบ) */
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;   /* กันตัวหลอดข้างในล้นออกมา */
+}
+
+/* บรรทัดที่ 84 ในโค้ดของคุณ */
+.progress-bar { 
+    height: 8px; 
+    background: linear-gradient(90deg, var(--primary), var(--secondary)); 
+    box-shadow: 0 0 15px var(--primary); 
+    transition: width 1s ease-in-out; 
+    max-width: 100%; /* เพิ่มบรรทัดนี้เข้าไปเพื่อป้องกันหลอดทะลุ */
+}
         .stats-box { background: var(--card-bg); border: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 15px; justify-content: center; }
         .stat-item { text-align: center; }
         .stat-label { font-size: 10px; color: #94a3b8; font-family: 'Fira Code'; text-transform: uppercase; }
@@ -146,7 +177,7 @@ $challenges_res = $db->query("SELECT * FROM challenges ORDER BY level_num ASC");
     <h2 class="section-title">ACTIVE_TARGET_LIST</h2>
     <div class="level-grid">
         <?php
-        while ($row = $challenges_res->fetchArray(SQLITE3_ASSOC)):
+while ($row = pg_fetch_assoc($challenges_res)):
             $i = $row['level_num'];
             $is_unlocked = $i <= $level_reached;
             $is_completed = $i < $level_reached;

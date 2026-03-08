@@ -1,265 +1,184 @@
 <?php
 session_start();
-$db = new SQLite3('game.db');
+require_once "connect.php"; // เชื่อมต่อ $conn ของ Supabase
 
-// --- 🛡️ SECURITY CHECK ---
-if (!isset($_SESSION['player_id']) || (int)$_SESSION['role'] !== 1) {
-    die("⛔ ACCESS_DENIED: Unauthorized Operation.");
+// --- 🛡️ AUTH CHECK ---
+if (!isset($_SESSION['player_id'])) { 
+    header("Location: login_real.php"); 
+    exit(); 
 }
 
-$msg = "";
+// 1. ดึงข้อมูลผู้เล่นปัจจุบันจาก Supabase
+$player_id = $_SESSION['player_id'];
+$res_player = pg_query_params($conn, "SELECT * FROM players WHERE id = $1", array($player_id));
+$player = pg_fetch_assoc($res_player);
 
-// --- 🛠️ LOGIC: จัดการ ACTIONS (Players & Challenges) ---
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $target_id = (int)$_GET['id'];
-    
-    switch ($_GET['action']) {
-        case 'reset':
-            $db->exec("UPDATE players SET score = 0, level_reached = 1 WHERE id = $target_id");
-            $msg = "SYSTEM: User #$target_id has been reset.";
-            break;
-        case 'ban':
-            $db->exec("DELETE FROM players WHERE id = $target_id");
-            $msg = "SYSTEM: User #$target_id terminated.";
-            break;
-        case 'make_admin':
-            $db->exec("UPDATE players SET role = 1 WHERE id = $target_id");
-            $msg = "SYSTEM: User #$target_id promoted to ADMIN.";
-            break;
-        case 'del_challenge':
-            $db->exec("DELETE FROM challenges WHERE level_num = $target_id");
-            $msg = "CHALLENGE_DELETED: Level $target_id has been removed.";
-            break;
-    }
+if (!$player) {
+    session_destroy();
+    header("Location: login_real.php");
+    exit();
 }
 
-// --- 📝 LOGIC: เพิ่ม/แก้ไขโจทย์ (ปรับปรุงคอลัมน์ใหม่) ---
-if (isset($_POST['save_challenge'])) {
-    $stmt = $db->prepare("INSERT OR REPLACE INTO challenges 
-        (level_num, title, description, sql_logic, target_identifier, access_key, hint_1, hint_2) 
-        VALUES (:lvl, :title, :desc, :logic, :target, :access, :h1, :h2)");
-    $stmt->bindValue(':lvl', (int)$_POST['level_num']);
-    $stmt->bindValue(':title', $_POST['title']);
-    $stmt->bindValue(':desc', $_POST['description']);
-    $stmt->bindValue(':logic', $_POST['sql_logic']);
-    $stmt->bindValue(':target', $_POST['target_identifier']);
-    $stmt->bindValue(':access', $_POST['access_key']);
-    $stmt->bindValue(':h1', $_POST['hint_1']);
-    $stmt->bindValue(':h2', $_POST['hint_2']);
-    $stmt->execute();
-    $msg = "CHALLENGE_SYNC: Level " . $_POST['level_num'] . " is updated.";
-}
+$level_reached = (int)($player['level_reached'] ?? 1);
+$total_score   = (int)($player['score'] ?? 0);
+$user_role     = (int)($player['role'] ?? 0);
 
-// --- 📝 LOGIC: แก้ไขชื่อ/รหัสผ่านผู้เล่น ---
-if (isset($_POST['update_user'])) {
-    $uid = (int)$_POST['user_id'];
-    $new_user = $_POST['new_username'];
-    
-    if (!empty($_POST['new_password'])) {
-        $new_pass = password_hash($_POST['new_password'], PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE players SET username = :u, password = :p WHERE id = :id");
-        $stmt->bindValue(':p', $new_pass);
-    } else {
-        $stmt = $db->prepare("UPDATE players SET username = :u WHERE id = :id");
-    }
-    $stmt->bindValue(':u', $new_user);
-    $stmt->bindValue(':id', $uid);
-    $stmt->execute();
-    $msg = "CREDENTIALS_UPDATED: Operator $new_user updated.";
-}
+// 2. ดึงจำนวนโจทย์ทั้งหมด
+$res_count = pg_query($conn, "SELECT COUNT(*) FROM challenges");
+$total_levels = (int)pg_fetch_result($res_count, 0, 0) ?: 1; 
+$progress_pct = round((($level_reached - 1) / $total_levels) * 100);
 
-// ดึงข้อมูลสำหรับ Edit
-$edit_data = ['level_num'=>'','title'=>'','description'=>'','sql_logic'=>'','target_identifier'=>'','access_key'=>'','hint_1'=>'','hint_2'=>''];
-if(isset($_GET['edit_lvl'])) {
-    $target_lvl = (int)$_GET['edit_lvl'];
-    $res = $db->querySingle("SELECT * FROM challenges WHERE level_num = $target_lvl", true);
-    if($res) $edit_data = $res;
-}
-
-// ดึงข้อมูลตารางทั้งหมด
-$players = $db->query("SELECT * FROM players ORDER BY role DESC, id ASC");
-$challenges = $db->query("SELECT * FROM challenges ORDER BY level_num ASC");
+// 3. ดึงรายการโจทย์ทั้งหมด
+$challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num ASC");
 ?>
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>Hacker King | Super Admin Console</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Orbitron:wght@700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hacker King | Dashboard & Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@400;700&family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        :root { 
-            --admin-red: #ef4444; 
-            --dark: #020617; 
-            --border: #1e293b; 
-            --neon: #10b981; 
-            --gold: #fbbf24; 
-            --cyan: #22d3ee;
+        /* ... (ใส่ CSS เดิมที่คุณให้มาที่นี่) ... */
+        :root {
+            --primary: #a855f7; --primary-glow: rgba(168, 85, 247, 0.6);
+            --secondary: #22d3ee; --success: #10b981; --danger: #ff4757;
+            --warning: #fbbf24; --dark-bg: #020617; --card-bg: rgba(15, 23, 42, 0.95);
+            --border: #334155; --terminal-green: #4ade80;
         }
-        body { background: var(--dark); color: #e2e8f0; font-family: 'Sarabun', sans-serif; margin: 0; padding: 20px; }
-        .admin-container { max-width: 1400px; margin: 0 auto; }
-        .header { border-bottom: 2px solid var(--admin-red); padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;}
-        .header h1 { font-family: 'Orbitron'; color: var(--admin-red); margin: 0; font-size: 24px;}
-        .nav-links { display: flex; gap: 10px; align-items: center; }
-        .grid { display: grid; grid-template-columns: 380px 1fr; gap: 25px; }
-        .card { background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border); padding: 20px; border-radius: 4px; margin-bottom: 25px; }
-        h2 { font-family: 'Orbitron'; font-size: 13px; color: var(--neon); border-left: 3px solid var(--neon); padding-left: 10px; margin-top: 0; margin-bottom: 20px; }
-        label { display: block; font-size: 10px; color: #64748b; margin-bottom: 3px; font-family: 'Fira Code'; text-transform: uppercase; }
-        input, select, textarea { width: 100%; background: #000; border: 1px solid var(--border); padding: 8px; color: var(--neon); font-family: 'Fira Code'; margin-bottom: 12px; box-sizing: border-box; outline: none; }
-        .btn { border: none; padding: 12px; cursor: pointer; font-family: 'Orbitron'; width: 100%; transition: 0.3s; font-size: 11px; font-weight: bold; }
-        .btn-save { background: var(--admin-red); color: white; }
-        .btn-edit { background: var(--neon); color: #000; }
-        
-        /* ปุ่ม View DB Style */
-        .btn-view-db { 
-            color: var(--cyan); 
-            text-decoration: none; 
-            font-family: 'Fira Code'; 
-            font-size: 12px; 
-            border: 1px solid var(--cyan); 
-            padding: 5px 15px; 
-            transition: 0.3s;
-        }
-        .btn-view-db:hover { background: rgba(34, 211, 238, 0.1); box-shadow: 0 0 10px rgba(34, 211, 238, 0.3); }
-
-        table { width: 100%; border-collapse: collapse; font-family: 'Fira Code'; font-size: 11px; }
-        th { background: #1e293b; text-align: left; padding: 12px; color: var(--admin-red); border-bottom: 2px solid var(--admin-red); }
-        td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        .action-link { text-decoration: none; font-size: 10px; margin-right: 5px; color: #94a3b8; border: 1px solid #334155; padding: 4px 8px; display: inline-block; transition: 0.2s; }
-        .btn-del { border-color: #ef4444; color: #ef4444; }
-        .msg-box { background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--neon); color: var(--neon); padding: 15px; margin-bottom: 20px; font-family: 'Fira Code'; }
+        /* [คัดลอก CSS ที่เหลือมาวางทั้งหมด] */
+        body { font-family: 'Sarabun', sans-serif; background: var(--dark-bg); color: #e2e8f0; margin: 0; background-image: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%); overflow-x: hidden; }
+        .navbar { height: 70px; background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--primary); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; position: sticky; top: 0; z-index: 100; }
+        .brand { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 22px; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+        .nav-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-nav { text-decoration: none; font-family: 'Fira Code', monospace; font-size: 11px; padding: 6px 12px; transition: 0.3s; border-radius: 2px; }
+        .btn-admin { color: var(--danger); border: 1px solid var(--danger); }
+        .btn-admin:hover { background: var(--danger); color: #fff; box-shadow: 0 0 10px var(--danger); }
+        .btn-academy { color: var(--secondary); border: 1px solid var(--secondary); }
+        .btn-logout { color: #64748b; border: 1px solid #334155; }
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; position: relative; z-index: 1; }
+        .hero-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 40px; }
+        .welcome-card { background: var(--card-bg); border: 1px solid var(--border); padding: 30px; border-left: 5px solid var(--primary); }
+        .welcome-card h1 { font-family: 'Orbitron', sans-serif; color: var(--secondary); margin: 10px 0; font-size: 28px; }
+        .progress-container { margin-top: 25px; background: #000; padding: 2px; border: 1px solid var(--border); }
+        .progress-bar { height: 8px; background: linear-gradient(90deg, var(--primary), var(--secondary)); box-shadow: 0 0 15px var(--primary); transition: width 1s ease-in-out; }
+        .stats-box { background: var(--card-bg); border: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 15px; justify-content: center; }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 10px; color: #94a3b8; font-family: 'Fira Code'; text-transform: uppercase; }
+        .stat-val { font-family: 'Orbitron', sans-serif; font-size: 28px; color: var(--warning); text-shadow: 0 0 10px var(--warning); }
+        .level-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+        .level-card { background: var(--card-bg); border: 1px solid var(--border); padding: 25px; text-align: center; transition: 0.4s; position: relative; overflow: hidden; }
+        .level-card.unlocked { border-color: var(--border); }
+        .level-card.unlocked:hover { transform: translateY(-5px); border-color: var(--primary); box-shadow: 0 10px 30px -10px var(--primary-glow); }
+        .level-card.completed { border-bottom: 4px solid var(--success); }
+        .level-icon { font-size: 32px; margin-bottom: 15px; display: block; opacity: 0.8; }
+        .level-name { font-family: 'Orbitron', sans-serif; font-size: 15px; color: #fff; margin-bottom: 10px; }
+        .btn-enter { display: block; width: 100%; margin-top: 20px; padding: 10px 0; background: transparent; border: 1px solid var(--secondary); color: var(--secondary); text-decoration: none; font-family: 'Fira Code'; font-size: 12px; transition: 0.3s; font-weight: bold; }
+        .btn-enter:hover { background: var(--secondary); color: #000; }
+        .locked-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 6, 23, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; backdrop-filter: blur(2px); }
+        .section-title { font-family: 'Orbitron'; font-size: 18px; color: var(--primary); margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
+        .section-title::after { content: ""; height: 1px; background: var(--border); flex-grow: 1; }
+        .academy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .lesson-card { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); padding: 20px; border-radius: 4px; transition: 0.3s; }
+        .lesson-card:hover { border-color: var(--secondary); background: rgba(34, 211, 238, 0.05); }
+        .lesson-card h3 { font-family: 'Orbitron'; font-size: 14px; color: var(--secondary); margin-top: 0; }
+        .lesson-card code { background: #000; color: var(--terminal-green); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+        .cheat-sheet { margin-top: 50px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); font-family: 'Fira Code', monospace; }
+        .cheat-header { background: #1e293b; padding: 8px 20px; color: var(--warning); font-size: 12px; }
+        .cheat-body { padding: 15px 20px; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
     </style>
 </head>
 <body>
 
-<div class="admin-container">
-    <div class="header">
-        <h1>SUPER_ADMIN_CONSOLE</h1>
-        <div class="nav-links">
-            <span style="color: var(--gold); font-family: 'Fira Code'; font-size: 12px; margin-right: 10px;">[ ROOT_ACTIVE ]</span>
-            <a href="view_db.php" class="btn-view-db">DATABASE_EXPLORER</a>
-            <a href="dashboard.php" style="color:#64748b; text-decoration:none; font-family:'Fira Code'; border: 1px solid #334155; padding: 5px 15px;">EXIT_ROOT</a>
+<nav class="navbar">
+    <div class="brand">HACKER_KING://DB</div>
+    <div class="nav-actions">
+        <?php if ($user_role === 1): ?>
+            <a href="admin_manage.php" class="btn-nav btn-admin">[ ROOT_CONSOLE ]</a>
+            <a href="view_db.php" class="btn-nav" style="color: var(--secondary); border: 1px solid var(--secondary);">[ DB_EXPLORER ]</a>
+        <?php endif; ?>
+        <a href="handbook.php" class="btn-nav btn-academy">[ VIEW_HANDBOOK_DB ]</a>
+        <a href="#academy" class="btn-nav btn-academy">[ ACADEMY ]</a>
+        <a href="leaderboard.php" class="btn-nav" style="color: var(--warning); border: 1px solid var(--warning);">[ RANKING ]</a>
+        <a href="logout.php" class="btn-nav btn-logout">SHUTDOWN</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="hero-grid">
+        <div class="welcome-card">
+            <div style="font-family: 'Fira Code'; font-size: 11px; color: var(--primary);">ID_TOKEN: <?php echo session_id(); ?></div>
+            <h1>WELCOME_OPERATOR: <?php echo htmlspecialchars($_SESSION['player_name']); ?></h1>
+            <p style="color: #94a3b8; font-size: 14px; line-height: 1.6;">
+                ระบบกำลังตรวจสอบช่องโหว่... กรุณาเลือกเป้าหมายที่ปลดล็อคแล้วเพื่อเริ่มการโจมตี 
+            </p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: <?php echo $progress_pct; ?>%"></div>
+            </div>
+            <div style="text-align: right; font-family: 'Fira Code'; font-size: 11px; margin-top: 8px; color: var(--secondary);">
+                BREACH_PROGRESS: <?php echo $progress_pct; ?>%
+            </div>
+        </div>
+
+        <div class="stats-box">
+            <div class="stat-item">
+                <div class="stat-label">CURRENT_SCORE</div>
+                <div class="stat-val"><?php echo number_format($total_score); ?></div>
+            </div>
+            <div style="height: 1px; background: var(--border); width: 50%; margin: 0 auto;"></div>
+            <div class="stat-item">
+                <div class="stat-label">MISSION_CLEARED</div>
+                <div class="stat-val"><?php echo ($level_reached - 1); ?> <span style="font-size: 14px; color: #444;">/ <?php echo $total_levels; ?></span></div>
+            </div>
         </div>
     </div>
 
-    <?php if($msg): ?>
-        <div class="msg-box">> <?php echo $msg; ?></div>
-    <?php endif; ?>
-
-    <div class="grid">
-        <div class="side-panel">
-            <div class="card">
-                <h2><?php echo isset($_GET['edit_lvl']) ? 'UPDATE_CHALLENGE' : 'CREATE_CHALLENGE'; ?></h2>
-                <form method="POST">
-                    <label>LVL_NUM (Primary Key)</label>
-                    <input type="number" name="level_num" value="<?php echo $edit_data['level_num']; ?>" required <?php echo isset($_GET['edit_lvl']) ? 'readonly style="opacity:0.5"' : ''; ?>>
-                    
-                    <label>TITLE</label>
-                    <input type="text" name="title" value="<?php echo htmlspecialchars($edit_data['title']); ?>" required>
-                    
-                    <label>DESCRIPTION</label>
-                    <textarea name="description" rows="2"><?php echo htmlspecialchars($edit_data['description']); ?></textarea>
-                    
-                    <label>SQL_LOGIC</label>
-                    <select name="sql_logic">
-                        <option value="string" <?php if($edit_data['sql_logic']=='string') echo 'selected'; ?>>' OR '1'='1' (String)</option>
-                        <option value="numeric" <?php if($edit_data['sql_logic']=='numeric') echo 'selected'; ?>>OR 1=1 (Numeric)</option>
-                        <option value="blind" <?php if($edit_data['sql_logic']=='blind') echo 'selected'; ?>>Blind Injection</option>
-                    </select>
-                    
-                    <div style="border: 1px solid #1e293b; padding: 10px; margin-bottom: 12px; background: rgba(0,0,0,0.3);">
-                        <label style="color:var(--gold);">TARGET_IDENTIFIER (Payload)</label>
-                        <input type="text" name="target_identifier" value="<?php echo htmlspecialchars($edit_data['target_identifier']); ?>" required>
-                        <label style="color:var(--gold);">ACCESS_KEY (Optional)</label>
-                        <input type="text" name="access_key" value="<?php echo htmlspecialchars($edit_data['access_key']); ?>">
+    <h2 class="section-title">ACTIVE_TARGET_LIST</h2>
+    <div class="level-grid">
+        <?php
+        while ($row = pg_fetch_assoc($challenges_res)):
+            $i = (int)$row['level_num'];
+            $is_unlocked = $i <= $level_reached;
+            $is_completed = $i < $level_reached;
+            
+            // Emoji Logic
+            $emoji = "📡";
+            if (stripos($row['title'], 'string') !== false) $emoji = "💉";
+            else if (stripos($row['title'], 'numeric') !== false) $emoji = "🔢";
+            else if ($i >= 5) $emoji = "💀";
+        ?>
+            <div class="level-card <?php echo $is_unlocked ? 'unlocked' : ''; ?> <?php echo $is_completed ? 'completed' : ''; ?>">
+                <?php if(!$is_unlocked): ?>
+                    <div class="locked-overlay">
+                        <span style="font-size: 30px;">🔒</span>
+                        <div style="font-size: 10px; margin-top: 10px; color: var(--danger); font-family: 'Fira Code';">ACCESS_DENIED</div>
                     </div>
+                <?php endif; ?>
+                
+                <span class="level-icon"><?php echo $emoji; ?></span>
+                <div class="level-name"><?php echo htmlspecialchars($row['title']); ?></div>
+                <div style="font-size: 11px; color: #64748b; line-height: 1.4; min-height: 45px;">
+                    <?php echo htmlspecialchars($row['description']); ?>
+                </div>
 
-                    <label>HINT_1 (30s)</label>
-                    <input type="text" name="hint_1" value="<?php echo htmlspecialchars($edit_data['hint_1']); ?>">
-                    <label>HINT_2 (180s)</label>
-                    <input type="text" name="hint_2" value="<?php echo htmlspecialchars($edit_data['hint_2']); ?>">
-
-                    <button type="submit" name="save_challenge" class="btn btn-save">
-                        <?php echo isset($_GET['edit_lvl']) ? 'OVERWRITE_MISSION' : 'DEPLOY_MISSION'; ?>
-                    </button>
-                    <?php if(isset($_GET['edit_lvl'])): ?>
-                        <a href="admin.php" style="display:block; text-align:center; color:#64748b; font-size:10px; margin-top:10px; text-decoration:none;">[ CANCEL_EDIT ]</a>
-                    <?php endif; ?>
-                </form>
+                <?php if($is_unlocked): ?>
+                    <a href="index.php?level=<?php echo $i; ?>" class="btn-enter">
+                        <?php echo $is_completed ? 'RE-RUN_EXPLOIT' : 'EXECUTE_PAYLOAD'; ?>
+                    </a>
+                <?php endif; ?>
             </div>
-
-            <div class="card">
-                <h2>PLAYER_CREDENTIAL_OVERRIDE</h2>
-                <form method="POST">
-                    <label>TARGET_PLAYER_ID</label>
-                    <input type="number" name="user_id" required>
-                    <label>NEW_CODENAME</label>
-                    <input type="text" name="new_username" required>
-                    <label>NEW_ACCESS_KEY</label>
-                    <input type="text" name="new_password">
-                    <button type="submit" name="update_user" class="btn btn-edit">UPDATE_CREDENTIALS</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="main-panel">
-            <div class="card">
-                <h2>MISSION_DATA_CORE</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th width="40">LVL</th><th width="140">TITLE</th><th>IDENTIFIER</th><th>ACCESS_KEY</th><th width="110">ACTIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while($c = $challenges->fetchArray(SQLITE3_ASSOC)): ?>
-                        <tr>
-                            <td><strong><?php echo $c['level_num']; ?></strong></td>
-                            <td style="color:var(--gold);"><?php echo htmlspecialchars($c['title']); ?></td>
-                            <td style="color:var(--neon); font-size:10px;"><code><?php echo htmlspecialchars($c['target_identifier']); ?></code></td>
-                            <td style="color:var(--neon); font-size:10px;"><code><?php echo htmlspecialchars($c['access_key'] ?: '-'); ?></code></td>
-                            <td>
-                                <a href="?edit_lvl=<?php echo $c['level_num']; ?>" class="action-link">EDIT</a>
-                                <a href="?action=del_challenge&id=<?php echo $c['level_num']; ?>" class="action-link btn-del">DEL</a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="card">
-                <h2>OPERATOR_REGISTRY</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th><th>CODENAME</th><th>ROLE</th><th>LVL</th><th>SCORE</th><th>OPERATIONS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while($p = $players->fetchArray(SQLITE3_ASSOC)): ?>
-                        <tr>
-                            <td>#<?php echo $p['id']; ?></td>
-                            <td style="color:#fff;"><?php echo htmlspecialchars($p['username']); ?></td>
-                            <td><span class="badge <?php echo $p['role'] == 1 ? 'badge-admin' : 'badge-user'; ?>"><?php echo $p['role'] == 1 ? 'ADMIN' : 'PLAYER'; ?></span></td>
-                            <td><?php echo $p['level_reached']; ?></td>
-                            <td style="color:var(--gold);"><?php echo number_format($p['score']); ?></td>
-                            <td>
-                                <?php if($p['role'] != 1): ?>
-                                    <a href="?action=make_admin&id=<?php echo $p['id']; ?>" class="action-link">+ADMIN</a>
-                                    <a href="?action=reset&id=<?php echo $p['id']; ?>" class="action-link">RESET</a>
-                                    <a href="?action=ban&id=<?php echo $p['id']; ?>" class="action-link btn-del">BAN</a>
-                                <?php else: ?>
-                                    <span style="color:#334155;">[ROOT_PROTECTED]</span>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <?php endwhile; ?>
     </div>
+
+    <h2 id="academy" class="section-title" style="margin-top: 80px; color: var(--secondary);">HACKER_ACADEMY_DATABASE</h2>
+    <div class="academy-grid">
+        <div class="lesson-card">
+            <h3>0x01: STRING_INJECTION</h3>
+            <p style="font-size: 12px; color: #94a3b8; line-height: 1.6;">
+                <strong>Payload:</strong> <code>' OR '1'='1</code>
+            </p>
+        </div>
+        </div>
 </div>
 
 </body>

@@ -1,31 +1,40 @@
 <?php
+require_once "connect.php";
+
 session_start();
 error_reporting(0);
 
 if (isset($_POST['register'])) {
-    $db = new SQLite3('game.db');
+
     $user = $_POST['username'];
     $pass = $_POST['password'];
     $confirm_pass = $_POST['confirm_password'];
 
     // ตรวจสอบว่าชื่อผู้ใช้ซ้ำไหม
-    $checkUser = $db->prepare("SELECT * FROM players WHERE username = :user");
-    $checkUser->bindValue(':user', $user);
-    $res = $checkUser->execute()->fetchArray();
+    $checkUser = pg_query_params(
+        $conn,
+        "SELECT * FROM players WHERE username = $1",
+        array($user)
+    );
+
+    $res = pg_fetch_assoc($checkUser);
 
     if ($res) {
         $error = "ERROR: USERNAME_ALREADY_EXISTS";
     } elseif ($pass !== $confirm_pass) {
         $error = "ERROR: PASSWORD_MISMATCH";
     } else {
-        // Hash รหัสผ่านก่อนบันทึก
+
+        // Hash password
         $hashed_pass = password_hash($pass, PASSWORD_DEFAULT);
-        
-        $stmt = $db->prepare("INSERT INTO players (username, password, level_reached) VALUES (:user, :pass, 1)");
-        $stmt->bindValue(':user', $user);
-        $stmt->bindValue(':pass', $hashed_pass);
-        
-        if ($stmt->execute()) {
+
+        $insert = pg_query_params(
+            $conn,
+            "INSERT INTO players (username, password, level_reached) VALUES ($1,$2,1)",
+            array($user,$hashed_pass)
+        );
+
+        if ($insert) {
             header("Location: login_real.php?registered=success");
             exit();
         } else {
