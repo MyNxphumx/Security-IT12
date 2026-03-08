@@ -1,7 +1,9 @@
 FROM php:8.2-apache
 
-COPY . /var/www/html/
+# ติดตั้ง libpq-dev (จำเป็นสำหรับ PostgreSQL) แล้วค่อยติดตั้ง extension pgsql และ pdo_pgsql
+RUN apt-get update && apt-get install -y libpq-dev \
+    && docker-php-ext-install pgsql pdo_pgsql
 
-RUN docker-php-ext-install mysqli
+COPY . /var/www/html/
 
 EXPOSE 80
