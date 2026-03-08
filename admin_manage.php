@@ -94,7 +94,7 @@ $challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num A
     <div class="brand">HACKER_KING://DB</div>
     <div class="nav-actions">
         <?php if ($user_role === 1): ?>
-            <a href="admin_manage.php" class="btn-nav btn-admin">[ ROOT_CONSOLE ]</a>
+            <a href="admin.php" class="btn-nav btn-admin">[ ROOT_CONSOLE ]</a>
             <a href="view_db.php" class="btn-nav" style="color: var(--secondary); border: 1px solid var(--secondary);">[ DB_EXPLORER ]</a>
         <?php endif; ?>
         <a href="handbook.php" class="btn-nav btn-academy">[ VIEW_HANDBOOK_DB ]</a>
