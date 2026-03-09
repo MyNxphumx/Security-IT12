@@ -38,7 +38,7 @@ if ($username === "" || $password === "") {
             $_SESSION['role'] = (int)$res['role'];
 
             if ($_SESSION['role'] === 1) {
-                header("Location: admin_manage.php");
+                header("Location: dashboard.php");
             } else {
                 header("Location: dashboard.php");
             }

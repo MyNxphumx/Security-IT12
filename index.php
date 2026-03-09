@@ -30,13 +30,9 @@ if (!$challenge && $level > 1) {
 // 1. รับค่าจากฟอร์มก่อน (ต้องอยู่ด้านบนๆ)
 // --- 1. เตรียมค่าพื้นฐาน (เพื่อให้แถบโชว์ตลอดเวลา ไม่ว่าจะกดปุ่มหรือไม่) ---
 if (isset($_POST['login'])) {
-    $user_val = $_POST['username'];
-    $pass_val = $_POST['password'];
-} else {
-    $user_val = ""; 
-    $pass_val = "";
+    $user_val = urldecode($_POST['username']);
+    $pass_val = urldecode($_POST['password']);
 }
-
 // --- 2. สร้าง Query สำหรับโชว์ (อยู่นอก if login เพื่อให้แถบ SERVER_LOG ขึ้นตลอด) ---
 $template = $challenge['query_template'];
 if (!empty($template)) {
@@ -296,5 +292,18 @@ function showHint(step) {
     document.getElementById('king-text').innerHTML = `<span style="color:var(--warning);">[HINT_${step}]:</span> ${h}`;
 }
 </script>
+
+<script>
+document.querySelector("form").addEventListener("submit", function(){
+
+    const username = document.querySelector("input[name='username']");
+    const password = document.querySelector("input[name='password']");
+
+    username.value = encodeURIComponent(username.value);
+    password.value = encodeURIComponent(password.value);
+
+});
+</script>
+
 </body>
 </html>
