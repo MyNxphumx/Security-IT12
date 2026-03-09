@@ -1,5 +1,6 @@
 <?php
 session_start();
+session_regenerate_id(true);
 require_once "connect.php"; // เรียกใช้ $conn จาก Supabase
 
 // --- 🛡️ ADMIN ACCESS ONLY GATE ---
@@ -35,6 +36,29 @@ $tables = ['players', 'challenges'];
         .btn-back { display: inline-block; color: var(--secondary); text-decoration: none; border: 1px solid var(--secondary); padding: 8px 15px; border-radius: 4px; transition: 0.3s; font-size: 12px; }
         .btn-back:hover { background: var(--secondary); color: #000; }
         .admin-badge { background: rgba(239, 68, 68, 0.1); color: var(--admin-red); border: 1px solid var(--admin-red); padding: 2px 10px; font-size: 10px; border-radius: 20px; }
+    
+    
+    
+    @media (max-width:600px){
+
+        body{
+        padding:20px;
+        }
+
+        h1{
+        font-size:20px;
+        }
+
+        table{
+        font-size:11px;
+        }
+
+        .btn-back{
+        font-size:10px;
+        padding:6px 10px;
+        }
+
+    }
     </style>
 </head>
 <body>
@@ -44,7 +68,7 @@ $tables = ['players', 'challenges'];
             <h1>ROOT_DATABASE_EXPLORER <span class="admin-badge">ADMIN_ONLY</span></h1>
             <p style="font-size: 10px; color: #64748b; margin: 5px 0 0 0;">ACCESS_LOG: SessionID_<?php echo session_id(); ?></p>
         </div>
-        <a href="admin_manage.php" class="btn-back"> < BACK_TO_CONSOLE </a>
+        <a href="dashboard.php" class="btn-back"> < BACK_TO_CONSOLE </a>
     </div>
 
     <hr style="border: 0; border-top: 1px solid var(--border); margin-bottom: 30px;">
@@ -58,8 +82,13 @@ $tables = ['players', 'challenges'];
 
         echo "<div class='table-container'>";
         echo "<h3>TABLE_VIEW: " . strtoupper($table) . "</h3>";
-        
-        $results = pg_query($conn, "SELECT * FROM $table");
+
+        if ($table === "challenges") {
+            $results = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num ASC");
+        } else {
+            $results = pg_query($conn, "SELECT * FROM $table");
+        }
+
         echo "<table>";
         
         $firstRow = true;
@@ -75,7 +104,7 @@ $tables = ['players', 'challenges'];
 
             echo "<tr>";
             foreach ($row as $key => $value) {
-                $displayValue = htmlspecialchars($value ?? 'NULL');
+                $displayValue = htmlspecialchars((string)($value ?? 'NULL'));
                 
                 // Masking Password หรือ Key สำคัญ
                 if (strpos(strtolower($key), 'password') !== false || strpos(strtolower($key), 'access_key') !== false) {

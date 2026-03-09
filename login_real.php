@@ -10,12 +10,16 @@ ini_set('display_errors', 1);
 $error = ""; // ประกาศตัวแปรไว้ก่อนเพื่อป้องกัน Notice
 
 if (isset($_POST['login'])) {
-    
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
+ $username = trim($_POST['username']);
+$password = $_POST['password'];
 
-    // 1. เปลี่ยน Query ให้ใช้ PostgreSQL (Supabase)
-    // ใช้ pg_query_params เพื่อความปลอดภัยสูงสุด
+if ($username === "" || $password === "") {
+
+    $error = "INPUT_ERROR: EMPTY_CREDENTIAL";
+
+} else {
+
+    // Query PostgreSQL
     $result = pg_query_params(
         $conn,
         "SELECT id, username, password, role FROM players WHERE username = $1 LIMIT 1",
@@ -25,32 +29,31 @@ if (isset($_POST['login'])) {
     if ($result) {
         $res = pg_fetch_assoc($result);
 
-        // 2. ตรวจสอบรหัสผ่าน (Password Hash)
         if ($res && password_verify($password, $res['password'])) {
-            
-            // บันทึกค่าลง Session
+
+            session_regenerate_id(true);
+
             $_SESSION['player_id'] = $res['id'];
             $_SESSION['player_name'] = $res['username'];
-            $_SESSION['role'] = (int)$res['role']; // เก็บค่า 0 หรือ 1
+            $_SESSION['role'] = (int)$res['role'];
 
-            // --- แยกเส้นทาง (Redirect Logic) ---
             if ($_SESSION['role'] === 1) {
-                // ถ้าเป็น Admin (role = 1)
                 header("Location: admin_manage.php");
             } else {
-                // ถ้าเป็นผู้เล่นทั่วไป (role = 0)
-                header("Location: dashboard.php"); 
+                header("Location: dashboard.php");
             }
             exit();
 
         } else {
-            // กรณีรหัสผ่านผิด หรือไม่พบชื่อผู้ใช้
+            sleep(1);
             $error = "CRITICAL_ERROR: INVALID_AUTHORIZATION_KEY";
         }
+
     } else {
-        // กรณีเชื่อมต่อฐานข้อมูลล้มเหลว หรือ Query ผิด
         $error = "SYSTEM_FAILURE: DATABASE_CONNECTION_LOST";
     }
+
+}   
 }
 ?>
 
@@ -220,6 +223,36 @@ if (isset($_POST['login'])) {
         }
         .top-left { top: -5px; left: -5px; border-right: 0; border-bottom: 0; }
         .bottom-right { bottom: -5px; right: -5px; border-left: 0; border-top: 0; }
+
+        .login-container{
+width:90%;
+max-width:400px;
+}
+@media (max-width:480px){
+
+body{
+padding:20px;
+}
+
+.login-container{
+padding:25px;
+}
+
+.logo-text{
+font-size:18px;
+}
+
+input{
+padding:10px;
+font-size:14px;
+}
+
+.btn-login{
+padding:12px;
+font-size:14px;
+}
+
+}
     </style>
 </head>
 <body>
@@ -236,11 +269,11 @@ if (isset($_POST['login'])) {
     <form method="POST">
         <div class="input-group">
             <label>IDENTIFIER_ID</label>
-            <input type="text" name="username" placeholder="Username..." required autofocus>
+            <input type="text" name="username" autocomplete="username">
         </div>
         <div class="input-group">
             <label>ENCRYPTED_KEY</label>
-            <input type="password" name="password" placeholder="Password..." required>
+            <input type="password" name="password" autocomplete="current-password">
         </div>
         
         <button type="submit" name="login" class="btn-login">INITIATE_AUTH()</button>

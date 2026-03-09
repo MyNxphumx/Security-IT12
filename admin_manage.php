@@ -1,5 +1,6 @@
 <?php
 session_start();
+session_regenerate_id(true);
 require_once "connect.php"; // เชื่อมต่อ $conn ของ Supabase
 
 // --- 🛡️ AUTH CHECK ---
@@ -10,7 +11,15 @@ if (!isset($_SESSION['player_id'])) {
 
 // 1. ดึงข้อมูลผู้เล่นปัจจุบันจาก Supabase
 $player_id = $_SESSION['player_id'];
-$res_player = pg_query_params($conn, "SELECT * FROM players WHERE id = $1", array($player_id));
+$res_player = pg_query_params(
+    $conn,
+    "SELECT * FROM players WHERE id = $1 LIMIT 1",
+    array($player_id)
+);
+if (!$res_player) {
+    session_destroy();
+    die("DATABASE_ERROR");
+}
 $player = pg_fetch_assoc($res_player);
 
 if (!$player) {
@@ -26,10 +35,13 @@ $user_role     = (int)($player['role'] ?? 0);
 // 2. ดึงจำนวนโจทย์ทั้งหมด
 $res_count = pg_query($conn, "SELECT COUNT(*) FROM challenges");
 $total_levels = (int)pg_fetch_result($res_count, 0, 0) ?: 1; 
-$progress_pct = round((($level_reached - 1) / $total_levels) * 100);
+$progress_pct = max(0, round((($level_reached - 1) / $total_levels) * 100));
 
 // 3. ดึงรายการโจทย์ทั้งหมด
 $challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num ASC");
+if (!$challenges_res) {
+    die("CHALLENGE_LOAD_ERROR");
+}
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -86,6 +98,44 @@ $challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num A
         .cheat-sheet { margin-top: 50px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); font-family: 'Fira Code', monospace; }
         .cheat-header { background: #1e293b; padding: 8px 20px; color: var(--warning); font-size: 12px; }
         .cheat-body { padding: 15px 20px; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
+        @media (max-width:900px){
+
+            .hero-grid{
+            grid-template-columns:1fr;
+            }
+
+            .navbar{
+            flex-direction:column;
+            height:auto;
+            padding:15px;
+            gap:10px;
+            }
+
+            .nav-actions{
+            flex-wrap:wrap;
+            justify-content:center;
+            }
+
+            }
+
+            @media (max-width:480px){
+
+            .level-grid{
+            grid-template-columns:1fr;
+            }
+
+            .welcome-card h1{
+            font-size:22px;
+            }
+
+            .stat-val{
+            font-size:22px;
+            }
+
+            }
+    
+    
+    
     </style>
 </head>
 <body>

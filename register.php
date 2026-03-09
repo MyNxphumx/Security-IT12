@@ -6,39 +6,56 @@ error_reporting(0);
 
 if (isset($_POST['register'])) {
 
-    $user = $_POST['username'];
+    $user = trim($_POST['username']);
     $pass = $_POST['password'];
     $confirm_pass = $_POST['confirm_password'];
 
-    // ตรวจสอบว่าชื่อผู้ใช้ซ้ำไหม
-    $checkUser = pg_query_params(
-        $conn,
-        "SELECT * FROM players WHERE username = $1",
-        array($user)
-    );
+    // ---------- VALIDATION ----------
+    if ($user === "" || $pass === "" || $confirm_pass === "") {
 
-    $res = pg_fetch_assoc($checkUser);
+        $error = "ERROR: EMPTY_INPUT";
 
-    if ($res) {
-        $error = "ERROR: USERNAME_ALREADY_EXISTS";
+    } elseif (strlen($user) < 3 || strlen($user) > 20) {
+
+        $error = "ERROR: INVALID_USERNAME_LENGTH";
+
+    } elseif (strlen($pass) < 6) {
+
+        $error = "ERROR: WEAK_PASSWORD";
+
     } elseif ($pass !== $confirm_pass) {
+
         $error = "ERROR: PASSWORD_MISMATCH";
+
     } else {
 
-        // Hash password
-        $hashed_pass = password_hash($pass, PASSWORD_DEFAULT);
-
-        $insert = pg_query_params(
+        // ตรวจสอบว่าชื่อผู้ใช้ซ้ำไหม
+        $checkUser = pg_query_params(
             $conn,
-            "INSERT INTO players (username, password, level_reached) VALUES ($1,$2,1)",
-            array($user,$hashed_pass)
+            "SELECT * FROM players WHERE username = $1",
+            array($user)
         );
 
-        if ($insert) {
-            header("Location: login_real.php?registered=success");
-            exit();
+        $res = pg_fetch_assoc($checkUser);
+
+        if ($res) {
+            $error = "ERROR: USERNAME_ALREADY_EXISTS";
         } else {
-            $error = "SYSTEM_FAILURE: DATABASE_WRITE_ERROR";
+
+            $hashed_pass = password_hash($pass, PASSWORD_DEFAULT);
+
+            $insert = pg_query_params(
+                $conn,
+                "INSERT INTO players (username, password, level_reached) VALUES ($1,$2,1)",
+                array($user,$hashed_pass)
+            );
+
+            if ($insert) {
+                header("Location: login_real.php?registered=success");
+                exit();
+            } else {
+                $error = "SYSTEM_FAILURE: DATABASE_WRITE_ERROR";
+            }
         }
     }
 }
@@ -74,7 +91,8 @@ if (isset($_POST['register'])) {
         }
 
         .reg-container {
-            width: 420px;
+            width:90%;
+            max-width:420px;
             background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 40px;
@@ -156,6 +174,26 @@ if (isset($_POST['register'])) {
             font-family: 'Fira Code', monospace;
             font-size: 12px;
         }
+
+        @media (max-width:480px){
+
+        .reg-container{
+            padding:25px;
+            }
+
+            .logo-text{
+            font-size:18px;
+            }
+
+            input{
+            font-size:14px;
+            }
+
+            .btn-reg{
+            padding:12px;
+            }
+
+        }
     </style>
 </head>
 <body>
@@ -184,7 +222,7 @@ if (isset($_POST['register'])) {
     </form>
 
     <?php if(isset($error)): ?>
-        <div class="error-box">> <?php echo $error; ?></div>
+        <div class="error-box">><?php echo htmlspecialchars($error); ?></div>
     <?php endif; ?>
 
     <a href="login_real.php" class="back-link">[ BACK_TO_LOGIN ]</a>

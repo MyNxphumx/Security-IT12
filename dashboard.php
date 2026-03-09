@@ -126,6 +126,84 @@ $challenges_res = pg_query($conn,"SELECT * FROM challenges ORDER BY level_num AS
         .cheat-sheet { margin-top: 50px; background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border); font-family: 'Fira Code', monospace; }
         .cheat-header { background: #1e293b; padding: 8px 20px; color: var(--warning); font-size: 12px; }
         .cheat-body { padding: 15px 20px; display: flex; justify-content: space-between; font-size: 12px; color: #64748b; }
+    
+    
+    
+    
+    /* -------------------------
+   MOBILE RESPONSIVE
+------------------------- */
+
+@media (max-width: 900px){
+
+.hero-grid{
+    grid-template-columns:1fr;
+}
+
+.navbar{
+    flex-direction:column;
+    height:auto;
+    padding:15px;
+    gap:10px;
+}
+
+.nav-actions{
+    flex-wrap:wrap;
+    justify-content:center;
+}
+
+.container{
+    margin:20px auto;
+}
+
+}
+
+
+/* ---------- SMALL MOBILE (4xx px) ---------- */
+
+@media (max-width:480px){
+
+.brand{
+    font-size:18px;
+}
+
+.welcome-card h1{
+    font-size:22px;
+}
+
+.level-grid{
+    grid-template-columns:1fr;
+}
+
+.academy-grid{
+    grid-template-columns:1fr;
+}
+
+.lesson-card{
+    padding:15px;
+}
+
+.stats-box{
+    flex-direction:row;
+    justify-content:space-around;
+}
+
+.stat-val{
+    font-size:22px;
+}
+
+.cheat-body{
+    flex-direction:column;
+    gap:10px;
+    text-align:center;
+}
+
+.btn-nav{
+    font-size:10px;
+    padding:5px 8px;
+}
+
+}
     </style>
 </head>
 <body>

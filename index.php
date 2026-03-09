@@ -27,33 +27,37 @@ if (!$challenge && $level > 1) {
 }
 
 // --- ตรรกะเตรียมตัวแปรสำหรับการแสดงผล Query ---
-$user_val = ""; 
-$pass_val = "";
-
-// ถ้ามีการกดปุ่มเข้ามา ให้ดึงค่าที่พิมพ์มาใช้
+// 1. รับค่าจากฟอร์มก่อน (ต้องอยู่ด้านบนๆ)
+// --- 1. เตรียมค่าพื้นฐาน (เพื่อให้แถบโชว์ตลอดเวลา ไม่ว่าจะกดปุ่มหรือไม่) ---
 if (isset($_POST['login'])) {
     $user_val = $_POST['username'];
     $pass_val = $_POST['password'];
-    $time_spent = isset($_POST['time_spent']) ? (int)$_POST['time_spent'] : 0;
+} else {
+    $user_val = ""; 
+    $pass_val = "";
 }
 
-// สร้าง Query แสดงผลทันที (ไม่ว่าจะกดปุ่มหรือไม่ก็ตาม)
-$logic_type = $challenge['sql_logic'];
-if ($logic_type == 'string') {
+// --- 2. สร้าง Query สำหรับโชว์ (อยู่นอก if login เพื่อให้แถบ SERVER_LOG ขึ้นตลอด) ---
+$template = $challenge['query_template'];
+if (!empty($template)) {
+    $query_display = str_replace(
+        ['{ID}', '{KEY}'], 
+        [$user_val, $pass_val], 
+        $template
+    );
+} else {
     $query_display = "SELECT * FROM users WHERE username = '$user_val' AND password = '$pass_val'";
-} elseif ($logic_type == 'numeric') {
-    // สำหรับ Numeric ถ้าเป็นค่าว่างให้แสดงเลข 0 หรือปล่อยว่างตามดีไซน์
-    $display_num = ($user_val === "") ? "" : $user_val;
-    $query_display = "SELECT * FROM users WHERE id = $display_num AND password = '$pass_val'";
-} elseif ($logic_type == 'blind') {
-    $query_display = "SELECT * FROM users WHERE username = \"$user_val\" AND password = \"$pass_val\"";
 }
 
-// --- ตรรกะตรวจสอบคำตอบ (เฉพาะเมื่อมีการ POST) ---
+// --- 3. ส่วนการตรวจสอบ (จะทำงานเฉพาะตอนกดปุ่ม EXECUTE เท่านั้น) ---
 if (isset($_POST['login'])) {
-    if ($user_val === $challenge['target_identifier'] && ($challenge['access_key'] == "" || $pass_val === $challenge['access_key'])) {
+    // 🔥 บรรทัดนี้สำคัญที่สุด! ต้องมีบรรทัดนี้ถึงจะเล่นผ่าน
+    $check_result = pg_query($conn, $query_display); 
+
+    if ($check_result && pg_num_rows($check_result) > 0) {
         $is_success = true;
         
+        $time_spent = (int)$_POST['time_spent'];
         $base_score = 1000;
         $penalty = $time_spent * 2;
         $earned_score = max(100, $base_score - $penalty);
@@ -64,10 +68,10 @@ if (isset($_POST['login'])) {
             [$level, $level + 1, $earned_score, $player_id]
         );
 
-        $message = "success|ACCESS GRANTED: Payload ถูกต้อง! กำลังพาคุณไปด่าน " . ($level + 1) . "...";
+        $message = "success|ACCESS GRANTED: SQL Injection สำเร็จ! กำลังพาคุณไปด่าน " . ($level + 1) . "...";
         header("refresh:1.5;url=index.php?level=" . ($level + 1));
     } else {
-        $message = "error|ACCESS DENIED: โครงสร้าง Query ผิดพลาด หรือรหัสไม่ถูกต้อง!";
+        $message = "error|ACCESS DENIED: โครงสร้าง Query ผิดพลาด หรือไม่สามารถข้ามการตรวจสอบได้!";
     }
 }
 
@@ -79,40 +83,125 @@ $msg_text = $msg_parts[1] ?? '';
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hacker King | Phase <?php echo $level; ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Orbitron:wght@700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #a855f7; --secondary: #22d3ee; --success: #10b981; --danger: #ff4757; --warning: #fbbf24; --dark-bg: #020617; --card-bg: rgba(15, 23, 42, 0.95); --border: #334155; --terminal-green: #4ade80; }
-        body { font-family: 'Sarabun', sans-serif; background: var(--dark-bg); color: #e2e8f0; margin: 0; overflow: hidden; background-image: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%); }
-        body::before { content: " "; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 1000; background-size: 100% 2px, 3px 100%; pointer-events: none; }
-        .navbar { height: 70px; background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--primary); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
-        .brand { font-family: 'Orbitron'; font-weight: 700; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
-        #timer-display { background: #000; border: 1px solid var(--secondary); color: var(--secondary); padding: 5px 15px; border-radius: 4px; font-family: 'Fira Code'; }
-        .container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); gap: 60px; padding: 40px; }
-        .hacker-king-area { width: 350px; text-align: center; }
-        .king-image { width: 280px; filter: drop-shadow(0 0 30px var(--primary)); animation: king-float 4s ease-in-out infinite, hacker-flicker 0.15s infinite;
+ <style>
+    :root { --primary: #a855f7; --secondary: #22d3ee; --success: #10b981; --danger: #ff4757; --warning: #fbbf24; --dark-bg: #020617; --card-bg: rgba(15, 23, 42, 0.95); --border: #334155; --terminal-green: #4ade80; }
+    
+    /* ปรับ overflow เป็น auto เพื่อให้เลื่อนดูเนื้อหาในมือถือได้ */
+    body { font-family: 'Sarabun', sans-serif; background: var(--dark-bg); color: #e2e8f0; margin: 0; overflow-x: hidden; overflow-y: auto; background-image: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #020617 100%); min-height: 100vh; }
+    
+    body::before { content: " "; position: fixed; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 1000; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+    
+    /* Navbar ปรับให้ Wrap ได้ถ้าจอแคบมาก */
+    .navbar { min-height: 70px; background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--primary); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; flex-wrap: wrap; gap: 10px; }
+    
+    .brand { font-family: 'Orbitron'; font-weight: 700; color: var(--primary); text-shadow: 0 0 10px var(--primary); }
+    #timer-display { background: #000; border: 1px solid var(--secondary); color: var(--secondary); padding: 5px 15px; border-radius: 4px; font-family: 'Fira Code'; }
+    
+    /* Container: หัวใจหลักของ Responsive */
+    .container { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 70px); gap: 60px; padding: 40px; flex-wrap: wrap; }
+    
+    /* ปรับความกว้างเป็น Max-width แทน */
+    .hacker-king-area { width: 100%; max-width: 350px; text-align: center; }
+    .king-image { width: 100%; max-width: 280px; height: auto; filter: drop-shadow(0 0 30px var(--primary)); animation: king-float 4s ease-in-out infinite, hacker-flicker 0.15s infinite; }
+    
+    @keyframes hacker-flicker { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.9; } }
+    @keyframes king-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+    
+    .speech-bubble { background: var(--card-bg); border-left: 5px solid var(--primary); padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; font-size: 14px; }
+    
+    /* Game Card ปรับเป็น Responsive Width */
+    .game-card { background: var(--card-bg); border: 1px solid var(--border); width: 100%; max-width: 450px; padding: 40px; position: relative; box-sizing: border-box; }
+    
+    .lvl-badge { position: absolute; top: 15px; right: 20px; font-family: 'Orbitron'; color: var(--primary); font-size: 12px; opacity: 0.6; }
+    h2 { font-family: 'Orbitron'; color: var(--secondary); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 0; }
+    
+    input { width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 12px; color: var(--terminal-green); font-family: 'Fira Code'; margin-bottom: 20px; box-sizing: border-box; outline: none; }
+    
+    .btn-execute { width: 100%; padding: 15px; background: transparent; border: 1px solid var(--primary); color: var(--primary); font-family: 'Orbitron'; font-weight: bold; cursor: pointer; transition: 0.3s; }
+    .btn-execute:hover { background: var(--primary); color: white; box-shadow: 0 0 20px var(--primary); }
+    
+    /* ปรับ Terminal ให้รองรับข้อความยาวๆ ไม่ให้ดันกล่องพัง */
+    .terminal { margin-top: 20px; background: #000; border: 1px solid #333; padding: 15px; font-family: 'Fira Code'; font-size: 13px; word-break: break-all; overflow-x: auto; }
+    
+    .kw { color: #ff79c6; }
+    .success-text { color: var(--success); }
+    .error-text { color: var(--danger); }
+    .hint-btns { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+    .hint-btn { background: rgba(251, 191, 36, 0.05); border: 1px solid #444; color: #666; padding: 8px 15px; cursor: not-allowed; font-size: 11px; font-family: 'Fira Code'; width: 80%; }
+    .hint-btn.unlocked { border-color: var(--warning); color: var(--warning); cursor: pointer; }
+
+    /* --- เพิ่มเติมเฉพาะส่วน Responsive (Mobile) --- */
+@media (max-width: 900px) {
+        .container { flex-direction: column; padding: 20px; gap: 30px; }
+        .navbar { padding: 10px 20px; justify-content: center; height: auto; }
+        .hacker-king-area { max-width: 100%; }
+        .game-card { padding: 25px 20px; }
+        .king-image { max-width: 200px; }
     }
-            @keyframes hacker-flicker {
-            0% { opacity: 0.8; }
-            50% { opacity: 1; }
-            100% { opacity: 0.9; }
+
+    /* 🔥 สำหรับหน้าจอมือถือ (Small Mobile 480px หรือ 4XXpx) */
+/* 🔥 สำหรับหน้าจอมือถือขนาดเล็ก (4XXpx) */
+@media (max-width: 480px) {
+        /* 1. บังคับให้ Container เรียงเป็นแนวตั้งแน่นอน */
+        .container { 
+            display: flex !important;
+            flex-direction: column !important; 
+            padding: 10px !important; 
+            gap: 20px !important; 
+            height: auto !important;
+            min-height: calc(100vh - 70px) !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
         }
-        @keyframes king-float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
-        .speech-bubble { background: var(--card-bg); border-left: 5px solid var(--primary); padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; font-size: 14px; }
-        .game-card { background: var(--card-bg); border: 1px solid var(--border); width: 450px; padding: 40px; position: relative; }
-        .lvl-badge { position: absolute; top: 15px; right: 20px; font-family: 'Orbitron'; color: var(--primary); font-size: 12px; opacity: 0.6; }
-        h2 { font-family: 'Orbitron'; color: var(--secondary); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-top: 0; }
-        input { width: 100%; background: #0f172a; border: 1px solid var(--border); padding: 12px; color: var(--terminal-green); font-family: 'Fira Code'; margin-bottom: 20px; box-sizing: border-box; outline: none; }
-        .btn-execute { width: 100%; padding: 15px; background: transparent; border: 1px solid var(--primary); color: var(--primary); font-family: 'Orbitron'; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-execute:hover { background: var(--primary); color: white; box-shadow: 0 0 20px var(--primary); }
-        .terminal { margin-top: 20px; background: #000; border: 1px solid #333; padding: 15px; font-family: 'Fira Code'; font-size: 13px; }
-        .kw { color: #ff79c6; }
-        .success-text { color: var(--success); }
-        .error-text { color: var(--danger); }
-        .hint-btns { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
-        .hint-btn { background: rgba(251, 191, 36, 0.05); border: 1px solid #444; color: #666; padding: 8px 15px; cursor: not-allowed; font-size: 11px; font-family: 'Fira Code'; width: 80%; }
-        .hint-btn.unlocked { border-color: var(--warning); color: var(--warning); cursor: pointer; }
-    </style>
+
+        /* 2. บังคับให้กล่อง King กว้างเต็มที่เพื่อให้ Game Card ตกลงมาข้างล่าง */
+        .hacker-king-area { 
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-bottom: 10px !important;
+            flex: none !important; /* ป้องกันไม่ให้มันพยายามยื้อพื้นที่แนวขวาง */
+        }
+
+        /* 3. ปรับ Game Card ให้กว้างเต็มจอ */
+        .game-card { 
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 20px 15px !important;
+            flex: none !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 4. ปรับรูปและ Navbar ให้เล็กลง */
+        .king-image { 
+            max-width: 140px !important; 
+            height: auto !important;
+        }
+
+        .navbar { 
+            height: auto !important;
+            flex-direction: column !important;
+            padding: 15px !important;
+            gap: 10px !important;
+        }
+
+        .speech-bubble { 
+            width: 100% !important;
+            font-size: 13px !important;
+        }
+
+        /* 5. ทำให้ Terminal ไม่ดันหน้าจอ */
+        .terminal { 
+            width: 100% !important;
+            box-sizing: border-box !important;
+            word-break: break-all !important;
+        }
+    }
+    
+    
+</style>
 </head>
 <body>
 
@@ -150,22 +239,27 @@ $msg_text = $msg_parts[1] ?? '';
             <button type="submit" name="login" class="btn-execute">EXECUTE_EXPLOIT()</button>
         </form>
 
+
         <?php if($message): ?>
             <div class="terminal <?php echo $msg_type == 'success' ? 'success-text' : 'error-text'; ?>">
                 > <?php echo $msg_text; ?>
             </div>
         <?php endif; ?>
 
-        <?php if($query_display): ?>
-            <div class="terminal" style="border-top:none; background:#0a0a0a; color:#888;">
-                <div style="font-size:10px; color:#444; margin-bottom:5px;">SERVER_LOG: SQL_QUERY</div>
-                <?php 
-                    $q = htmlspecialchars($query_display);
-                    foreach(['SELECT', 'FROM', 'WHERE', 'AND', 'OR'] as $kw) $q = str_replace($kw, "<span class='kw'>$kw</span>", $q);
-                    echo $q;
-                ?>
-            </div>
-        <?php endif; ?>
+<?php if($query_display): ?>
+    <div class="terminal" style="border-top:none; background:#0a0a0a; color:#888;">
+        <div style="font-size:10px; color:#444; margin-bottom:5px;">SERVER_LOG: SQL_QUERY</div>
+        <?php 
+            $q = htmlspecialchars($query_display);
+            // เพิ่มคำสั่ง str_ireplace (Ignore case) และเพิ่ม Keyword ให้ครบ
+            $keywords = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'UNION', 'LIKE', 'LIMIT', 'ORDER BY', 'INSERT', 'UPDATE', 'DELETE'];
+            foreach($keywords as $kw) {
+                $q = str_ireplace($kw, "<span class='kw'>$kw</span>", $q);
+            }
+            echo $q;
+        ?>
+    </div>
+<?php endif; ?>
     </div>
 </div>
 

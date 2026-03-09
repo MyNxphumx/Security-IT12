@@ -88,6 +88,7 @@ $challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num A
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hacker King | Super Admin Console</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Orbitron:wght@700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -114,6 +115,53 @@ $challenges_res = pg_query($conn, "SELECT * FROM challenges ORDER BY level_num A
         .badge { padding: 2px 6px; border-radius: 3px; font-size: 9px; }
         .badge-admin { background: var(--admin-red); color: white; }
         .badge-user { background: #334155; color: #94a3b8; }
+
+        /* --- 📱 RESPONSIVE ADAPTATION --- */
+
+        /* ปรับ Grid จาก 2 คอลัมน์ เป็นคอลัมน์เดียวบนมือถือ */
+        @media (max-width: 992px) {
+            .grid {
+                grid-template-columns: 1fr; /* ให้ Side Panel มาอยู่ข้างบน Main Panel */
+            }
+            
+            body {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+        }
+
+        /* จัดการกับตาราง (Tables) บนหน้าจอเล็ก */
+        @media (max-width: 600px) {
+            /* ทำให้ตารางเลื่อนซ้ายขวาได้ ไม่ให้ดันหน้าจอจนเบี้ยว */
+            .card {
+                padding: 15px;
+                overflow-x: auto; 
+            }
+
+            table {
+                min-width: 500px; /* บังคับความกว้างขั้นต่ำเพื่อให้ข้อมูลไม่เบียดกันจนอ่านไม่ออก */
+            }
+
+            /* ปรับปุ่ม Action ให้กดง่ายขึ้นบนนิ้วมือ */
+            .action-link {
+                padding: 6px 10px;
+                margin-bottom: 5px;
+                display: inline-block;
+            }
+
+            /* ซ่อนบางคอลัมน์ที่ไม่จำเป็นมากบนมือถือเพื่อประหยัดพื้นที่ (ทางเลือก) */
+            .mobile-hide {
+                display: none;
+            }
+        }
+
+/* ปรับแต่ง Form Input ให้เต็มความกว้างเสมอ */
+input, select, textarea {
+    font-size: 14px; /* ป้องกัน iOS Auto-zoom เมื่อ Focus input */
+}
     </style>
 </head>
 <body>

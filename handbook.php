@@ -30,6 +30,69 @@ if (!isset($_SESSION['player_id'])) {
         .btn-back { display: inline-block; margin-bottom: 20px; color: var(--secondary); text-decoration: none; border: 1px solid var(--secondary); padding: 8px 15px; border-radius: 4px; font-family: 'Fira Code'; font-size: 12px; }
         .btn-back:hover { background: var(--secondary); color: #000; }
         strong { color: #fff; }
+    
+    
+    
+    /* -------------------------
+   TABLET
+------------------------- */
+
+@media (max-width:900px){
+
+body{
+padding:25px;
+}
+
+.container{
+max-width:100%;
+}
+
+}
+
+
+/* -------------------------
+   MOBILE
+------------------------- */
+
+@media (max-width:480px){
+
+body{
+padding:15px;
+}
+
+h1{
+font-size:22px;
+}
+
+.category-title{
+font-size:18px;
+}
+
+.cheat-card{
+padding:15px;
+}
+
+h3{
+font-size:14px;
+}
+
+.desc{
+font-size:13px;
+}
+
+code{
+font-size:12px;
+overflow-x:auto;
+white-space:pre;
+}
+
+.btn-back{
+font-size:11px;
+padding:6px 10px;
+}
+
+}
+    
     </style>
 </head>
 <body>
