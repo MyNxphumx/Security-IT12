@@ -1,0 +1,21 @@
+services:
+  # 1. Frontend
+  client:
+    build: ./my-quiz-game
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./my-quiz-game:/app
+      - /app/node_modules
+    depends_on:
+      - server
+
+  # 2. Backend
+  server:
+    build: ./server
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server:/usr/src/app
+      - /usr/src/app/node_modules
+    # ไม่ต้องมี depends_on: db แล้ว เพราะ db อยู่บน Cloud

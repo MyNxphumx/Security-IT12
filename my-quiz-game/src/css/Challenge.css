@@ -1,0 +1,369 @@
+:root{
+ --primary:#a855f7;
+ --secondary:#22d3ee;
+ --success:#10b981;
+ --danger:#ff4757;
+ --warning:#fbbf24;
+ --dark-bg:#020617;
+ --card-bg:rgba(15,23,42,.95);
+ --border:#334155;
+ --terminal-green:#4ade80;
+}
+
+/* BODY */
+
+body{
+ margin:0;
+ font-family:'Sarabun',sans-serif;
+ background:var(--dark-bg);
+ color:#e2e8f0;
+ overflow-x:hidden;
+ background-image:radial-gradient(circle at 50% 50%,#1e1b4b 0%,#020617 100%);
+ min-height:100vh;
+}
+
+/* CRT overlay */
+
+.game-body::before{
+ content:"";
+ position:fixed;
+ inset:0;
+ background:
+ linear-gradient(rgba(18,16,16,0)50%,rgba(0,0,0,.25)50%),
+ linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,255,.06));
+ background-size:100% 2px,3px 100%;
+ pointer-events:none;
+ z-index:1000;
+}
+
+/* NAVBAR */
+
+.navbar{
+ min-height:70px;
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ padding:0 40px;
+ background:rgba(2,6,23,.8);
+ backdrop-filter:blur(10px);
+ border-bottom:1px solid var(--primary);
+}
+
+.brand{
+ font-family:'Orbitron',sans-serif;
+ font-weight:700;
+ color:var(--primary);
+ text-shadow:0 0 10px var(--primary);
+}
+
+/* TIMER */
+
+.stats-bar{
+ display:flex;
+ gap:15px;
+ align-items:center;
+}
+
+.timer{
+ background:#000;
+ border:1px solid var(--secondary);
+ color:var(--secondary);
+ padding:5px 15px;
+ border-radius:4px;
+ font-family:'Fira Code',monospace;
+}
+
+.phase{
+ background:var(--primary);
+ color:#fff;
+ padding:5px 15px;
+ border-radius:4px;
+ font-family:'Fira Code',monospace;
+}
+
+/* MAIN CONTAINER */
+
+.container{
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ min-height:calc(100vh - 70px);
+ gap:60px;
+ padding:40px;
+ flex-wrap:wrap;
+}
+
+/* HACKER KING AREA */
+
+.hacker-king-area{
+ width:100%;
+ max-width:350px;
+ text-align:center;
+}
+
+.speech-bubble{
+ background:var(--card-bg);
+ border-left:5px solid var(--primary);
+ padding:20px;
+ border-radius:8px;
+ margin-bottom:20px;
+ text-align:left;
+ font-size:14px;
+}
+
+/* KING IMAGE */
+
+.king-image{
+ width:100%;
+ max-width:280px;
+ height:auto;
+ filter:drop-shadow(0 0 30px var(--primary));
+ animation:king-float 4s ease-in-out infinite,
+           hacker-flicker .15s infinite;
+}
+
+@keyframes hacker-flicker{
+ 0%{opacity:.8}
+ 50%{opacity:1}
+ 100%{opacity:.9}
+}
+
+@keyframes king-float{
+ 0%,100%{transform:translateY(0)}
+ 50%{transform:translateY(-15px)}
+}
+
+/* GAME CARD */
+
+.game-card{
+ background:var(--card-bg);
+ border:1px solid var(--border);
+ width:100%;
+ max-width:450px;
+ padding:40px;
+ position:relative;
+}
+
+.lvl-badge{
+ position:absolute;
+ top:15px;
+ right:20px;
+ font-family:'Orbitron';
+ color:var(--primary);
+ font-size:12px;
+ opacity:.6;
+}
+
+/* TITLE */
+
+h2{
+ font-family:'Orbitron';
+ color:var(--secondary);
+ border-bottom:1px solid var(--border);
+ padding-bottom:10px;
+ margin-top:0;
+}
+
+/* INPUT */
+
+.hacker-input{
+ width:100%;
+ background:#0f172a;
+ border:1px solid var(--border);
+ padding:12px;
+ color:var(--terminal-green);
+ font-family:'Fira Code',monospace;
+ margin-bottom:20px;
+ box-sizing:border-box;
+ outline:none;
+}
+
+/* BUTTON */
+
+.btn-execute{
+ width:100%;
+ padding:15px;
+ background:transparent;
+ border:1px solid var(--primary);
+ color:var(--primary);
+ font-family:'Orbitron';
+ font-weight:bold;
+ cursor:pointer;
+ transition:.3s;
+}
+
+.btn-execute:hover{
+ background:var(--primary);
+ color:#fff;
+ box-shadow:0 0 20px var(--primary);
+}
+
+/* TERMINAL */
+
+.terminal{
+ margin-top:20px;
+ background:#000;
+ border:1px solid #333;
+ padding:15px;
+ font-family:'Fira Code',monospace;
+ font-size:13px;
+ word-break:break-all;
+ overflow-x:auto;
+}
+
+.log-terminal{
+ border-top:none;
+ background:#0a0a0a;
+ color:#888;
+}
+
+.log-header{
+ font-size:10px;
+ color:#444;
+ margin-bottom:5px;
+}
+
+.kw{
+ color:#ff79c6;
+}
+
+.success-text{
+ color:var(--success);
+}
+
+.error-text{
+ color:var(--danger);
+}
+
+/* HINT BUTTONS */
+
+.hint-btns{
+ margin-top:15px;
+ display:flex;
+ flex-direction:column;
+ gap:8px;
+ align-items:center;
+}
+
+.hint-btn{
+ background:rgba(251,191,36,.05);
+ border:1px solid #444;
+ color:#666;
+ padding:8px 15px;
+ font-size:11px;
+ font-family:'Fira Code';
+ width:80%;
+ cursor:not-allowed;
+}
+
+.hint-btn.unlocked{
+ border-color:var(--warning);
+ color:var(--warning);
+ cursor:pointer;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:900px){
+
+ .container{
+  flex-direction:column;
+  padding:20px;
+  gap:30px;
+ }
+
+ .navbar{
+  padding:10px 20px;
+  justify-content:center;
+ }
+
+ .game-card{
+  padding:25px 20px;
+ }
+
+ .king-image{
+  max-width:200px;
+ }
+
+}
+
+@media(max-width:480px){
+
+ .container{
+  padding:10px;
+  gap:20px;
+ }
+
+ .game-card{
+  max-width:100%;
+  padding:20px 15px;
+ }
+
+ .king-image{
+  max-width:140px;
+ }
+
+ .navbar{
+  flex-direction:column;
+  padding:15px;
+ }
+
+}
+
+.exit-link{
+ color:var(--secondary);
+ font-family:'Fira Code';
+ background:none;
+ border:none;
+ cursor:pointer;
+}
+
+/* HINT MODAL */
+
+.hint-modal{
+ position:fixed;
+ inset:0;
+ background:rgba(0,0,0,.7);
+ display:flex;
+ justify-content:center;
+ align-items:center;
+ z-index:2000;
+}
+
+.hint-box{
+ background:#020617;
+ border:1px solid var(--warning);
+ padding:30px;
+ width:400px;
+ max-width:90%;
+ font-family:'Fira Code';
+ box-shadow:0 0 20px rgba(251,191,36,.3);
+}
+
+.hint-header{
+ color:var(--warning);
+ font-family:'Orbitron';
+ margin-bottom:15px;
+ border-bottom:1px solid #333;
+ padding-bottom:8px;
+}
+
+.hint-content{
+ color:#ddd;
+ margin-bottom:20px;
+ line-height:1.6;
+}
+
+.btn-close{
+ background:transparent;
+ border:1px solid var(--warning);
+ color:var(--warning);
+ padding:8px 20px;
+ cursor:pointer;
+ font-family:'Orbitron';
+}
+
+.btn-close:hover{
+ background:var(--warning);
+ color:#000;
+}

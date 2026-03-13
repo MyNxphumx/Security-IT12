@@ -1,0 +1,193 @@
+:root{
+ --primary:#a855f7;
+ --secondary:#22d3ee;
+ --warning:#fbbf24;
+ --dark-bg:#020617;
+ --card-bg:#0f172a;
+ --border:#334155;
+ --terminal-green:#4ade80;
+}
+
+.handbook-body{
+ background:var(--dark-bg);
+ color:#e2e8f0;
+ font-family:'Sarabun',sans-serif;
+ margin:0;
+ padding:40px;
+ line-height:1.6;
+ min-height:100vh;
+}
+
+.handbook-body .container{
+ max-width:900px;
+ margin:0 auto;
+}
+
+/* title */
+
+.handbook-body h1{
+ font-family:'Orbitron';
+ color:var(--primary);
+ text-shadow:0 0 10px var(--primary);
+ border-bottom:2px solid var(--primary);
+ padding-bottom:10px;
+ margin-top:0;
+}
+
+/* description */
+
+.desc{
+ font-size:14px;
+ color:#94a3b8;
+}
+
+.main-desc{
+ font-size:14px;
+ color:#94a3b8;
+ margin-bottom:30px;
+}
+
+/* category */
+
+.category-title{
+ font-family:'Orbitron';
+ color:var(--secondary);
+ margin-top:40px;
+ display:flex;
+ align-items:center;
+ gap:10px;
+}
+
+/* card */
+
+.cheat-card{
+ background:var(--card-bg);
+ border:1px solid var(--border);
+ border-radius:8px;
+ padding:20px;
+ margin-bottom:20px;
+ transition:0.3s;
+}
+
+.cheat-card:hover{
+ border-color:var(--primary);
+ box-shadow:0 0 15px rgba(168,85,247,.2);
+}
+
+/* title */
+
+.cheat-card h3{
+ color:var(--warning);
+ margin-top:0;
+ font-family:'Fira Code',monospace;
+ font-size:16px;
+}
+
+/* code */
+
+.cheat-card code{
+ background:#000;
+ color:var(--terminal-green);
+ padding:4px 8px;
+ border-radius:4px;
+ font-family:'Fira Code',monospace;
+ display:block;
+ margin:10px 0;
+ border-left:3px solid var(--terminal-green);
+}
+
+/* button */
+
+.btn-back{
+ display:inline-block;
+ margin-bottom:20px;
+ color:var(--secondary);
+ text-decoration:none;
+ border:1px solid var(--secondary);
+ padding:8px 15px;
+ border-radius:4px;
+ font-family:'Fira Code',monospace;
+ font-size:12px;
+ background:none;
+ cursor:pointer;
+}
+
+.btn-back:hover{
+ background:var(--secondary);
+ color:#000;
+}
+
+/* strong */
+
+strong{
+ color:#fff;
+}
+
+/* footer */
+
+.footer-tag{
+ text-align:center;
+ margin-top:50px;
+ opacity:.5;
+ font-family:'Fira Code';
+ font-size:12px;
+}
+
+/* -------------------------
+   TABLET
+------------------------- */
+
+@media (max-width:900px){
+
+.handbook-body{
+ padding:25px;
+}
+
+.handbook-body .container{
+ max-width:100%;
+}
+
+}
+
+/* -------------------------
+   MOBILE
+------------------------- */
+
+@media (max-width:480px){
+
+.handbook-body{
+ padding:15px;
+}
+
+.handbook-body h1{
+ font-size:22px;
+}
+
+.category-title{
+ font-size:18px;
+}
+
+.cheat-card{
+ padding:15px;
+}
+
+.cheat-card h3{
+ font-size:14px;
+}
+
+.desc{
+ font-size:13px;
+}
+
+.cheat-card code{
+ font-size:12px;
+ overflow-x:auto;
+ white-space:pre;
+}
+
+.btn-back{
+ font-size:11px;
+ padding:6px 10px;
+}
+
+}

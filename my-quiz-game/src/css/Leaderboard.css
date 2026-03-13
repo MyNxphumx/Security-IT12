@@ -1,0 +1,123 @@
+.leaderboard-bg {
+    background-image: 
+        linear-gradient(to bottom, rgba(2, 6, 23, 0.8), rgba(2, 6, 23, 0.95)),
+        url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+}
+
+.leaderboard-container {
+    max-width: 1000px !important;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.header-icon {
+    color: var(--primary);
+    filter: drop-shadow(0 0 10px var(--primary));
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+}
+
+/* Table Styling */
+.rank-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px; /* เว้นระยะห่างระหว่างแถว */
+}
+
+.rank-table th {
+    padding: 15px;
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--border);
+}
+
+.rank-row {
+    background: rgba(30, 41, 59, 0.5);
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.rank-row:hover {
+    background: rgba(168, 85, 247, 0.1);
+    transform: translateX(10px);
+    box-shadow: -5px 0 0 var(--primary);
+}
+
+.rank-row td {
+    padding: 20px 15px;
+    font-family: 'Fira Code', monospace;
+}
+
+/* Rank Colors */
+.rank-1 { border-left: 4px solid #fbbf24; background: rgba(251, 191, 36, 0.05); }
+.rank-2 { border-left: 4px solid #e2e8f0; }
+.rank-3 { border-left: 4px solid #cd7f32; }
+
+.gold { color: #fbbf24; filter: drop-shadow(0 0 5px #fbbf24); }
+.silver { color: #e2e8f0; }
+.bronze { color: #cd7f32; }
+
+.rank-badge-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+}
+
+.codename {
+    color: var(--secondary);
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.level-cell {
+    color: #94a3b8;
+}
+
+.score-cell {
+    color: var(--primary);
+    font-weight: bold;
+    text-align: right;
+}
+
+.unit {
+    font-size: 0.7rem;
+    opacity: 0.6;
+}
+
+.btn-back {
+    background: none;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 40px;
+    font-family: 'Fira Code';
+    transition: 0.3s;
+}
+
+.btn-back:hover {
+    color: var(--secondary);
+    text-shadow: 0 0 10px var(--secondary);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}

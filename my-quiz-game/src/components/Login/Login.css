@@ -1,0 +1,169 @@
+:root {
+  --primary: #a855f7;
+  --primary-glow: rgba(168, 85, 247, 0.6);
+  --secondary: #22d3ee;
+  --danger: #ff4757;
+  --dark-bg: #020617;
+  --card-bg: rgba(15, 23, 42, 0.9);
+  --border: #334155;
+}
+
+/* จัดการ Body ในระดับ Component หรือ Global */
+/* แก้ไขส่วน body ใน Login.css */
+/* เพิ่ม/แก้ไขใน Login.css */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100vw;
+    background: #020617; /* พื้นหลังเข้ม */
+    overflow: hidden;
+}
+
+.login-container {
+    /* มั่นใจว่าไม่ได้มี float: left หรือ margin-left แปลกๆ */
+    position: relative; 
+    z-index: 2;
+    width: 400px;
+    /* ...โค้ดเดิมของคุณ... */
+}
+
+.login-container {
+  position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+
+  width: 400px;             /* กำหนดความกว้างตายตัว */
+  max-width: 90%;           /* กันหลุดขอบในมือถือ */
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 40px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.login-container::after {
+  content: "";
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  background: linear-gradient(45deg, var(--primary), transparent, var(--secondary));
+  z-index: -1;
+  opacity: 0.5;
+}
+
+.header-area {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo-text {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  text-shadow: 0 0 10px var(--primary);
+  letter-spacing: 2px;
+}
+
+.subtitle {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: var(--secondary);
+  margin-top: 5px;
+  text-transform: uppercase;
+}
+
+.input-group {
+  margin-bottom: 20px;
+  position: relative;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.input-group input {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border);
+  padding: 12px 15px;
+  color: #fff;
+  font-family: 'Fira Code', monospace;
+  box-sizing: border-box;
+  outline: none;
+  transition: 0.3s;
+}
+
+.input-group input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.btn-login {
+  width: 100%;
+  padding: 15px;
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  letter-spacing: 2px;
+  margin-top: 10px;
+}
+
+.btn-login:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 20px var(--primary-glow);
+}
+
+.btn-login:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-box {
+  background: rgba(255, 71, 87, 0.1);
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
+  padding: 10px;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.footer-links {
+  margin-top: 25px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.footer-links a {
+  color: var(--secondary);
+  text-decoration: none;
+  font-family: 'Fira Code', monospace;
+}
+
+.corner {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border: 2px solid var(--primary);
+}
+
+.top-left { top: -5px; left: -5px; border-right: 0; border-bottom: 0; }
+.bottom-right { bottom: -5px; right: -5px; border-left: 0; border-top: 0; }
