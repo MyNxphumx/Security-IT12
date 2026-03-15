@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../css/AdminConsole.css';
+import { API } from "../config";
 
 const AdminConsole = () => {
     const navigate = useNavigate();
@@ -24,8 +25,9 @@ const AdminConsole = () => {
 
     const fetchData = async () => {
         try {
-            const pRes = await fetch('http://localhost:3000/api/admin/players');
-            const cRes = await fetch('http://localhost:3000/api/admin/challenges');
+            
+            const pRes = await fetch(`${API}/api/admin/players`);
+            const cRes = await fetch(`${API}/api/admin/challenges`);
             setPlayers(await pRes.json());
             setChallenges(await cRes.json());
         } catch (err) {
@@ -36,7 +38,7 @@ const AdminConsole = () => {
     // --- ส่วนจัดการผู้เล่น (Reset, Ban, Make Admin) ---
     const handlePlayerAction = async (action, id) => {
         if (!window.confirm(`Confirm ${action.toUpperCase()} for ID #${id}?`)) return;
-        const res = await fetch('http://localhost:3000/api/admin/players/action', {
+        const res = await fetch(`${API}/api/admin/players/action`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, id })
@@ -50,7 +52,7 @@ const AdminConsole = () => {
     // --- ส่วนเพิ่ม/แก้ไขโจทย์ (Upsert) ---
     const handleSaveChallenge = async (e) => {
         e.preventDefault();
-        const res = await fetch('http://localhost:3000/api/admin/challenges/upsert', {
+        const res = await fetch(`/admin/challenges/upsert`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(form)
@@ -64,7 +66,7 @@ const AdminConsole = () => {
 
     const handleDeleteChallenge = async (lvl) => {
         if (!window.confirm(`DELETE Level ${lvl}?`)) return;
-        const res = await fetch(`http://localhost:3000/api/admin/challenges/delete/${lvl}`, { method: 'DELETE' });
+        const res = await fetch(`${API}/api/admin/admin/challenges/delete/${lvl}`, { method: 'DELETE' });
         if (res.ok) {
             setMsg(`CHALLENGE_DELETED: Level ${lvl} removed.`);
             fetchData();
@@ -74,7 +76,7 @@ const AdminConsole = () => {
     // --- ส่วน Player Override (Credentials) ---
     const handleUpdateUser = async (e) => {
         e.preventDefault();
-        const res = await fetch('http://localhost:3000/api/admin/players/update', {
+        const res = await fetch(`${API}/api/admin/admin/players/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(userForm)

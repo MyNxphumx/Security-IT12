@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../css/Handbook.css';
+import { API } from "../config";
 
 const Handbook = () => {
     const navigate = useNavigate();

@@ -1,75 +1,51 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/Dashboard.css";
+import { API } from "../config";
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null); 
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 1. ตรวจสอบการ Login จาก LocalStorage
     const storedUser = JSON.parse(localStorage.getItem("user"));
-    
     if (!storedUser || !storedUser.id) {
-      console.warn("Unauthorized access, redirecting to login...");
       navigate("/login");
       return;
     }
 
-    // 2. ดึงข้อมูล Dashboard จาก API
     const fetchDashboardData = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/dashboard/${storedUser.id}`);
-        
-        if (!response.ok) {
-          if (response.status === 404) throw new Error("USER_NOT_FOUND");
-          throw new Error("SERVER_ERROR");
-        }
-
+        const response = await fetch(`${API}/api/dashboard/${storedUser.id}`);
+        if (!response.ok) throw new Error("SERVER_ERROR");
         const result = await response.json();
         setData(result);
         setLoading(false);
       } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
         setError(err.message);
         setLoading(false);
       }
     };
-
     fetchDashboardData();
   }, [navigate]);
 
-  // หน้าจอตอนกำลังโหลด
-  if (loading) {
-    return (
-      <div className="initializing-screen">
-        <div className="loader-text">INITIALIZING_SYSTEM...</div>
-        <div className="loader-bar"></div>
-      </div>
-    );
-  }
-
-  // หน้าจอเมื่อเกิด Error
-  if (error || !data) {
-    return (
-      <div className="initializing-screen error-state">
-        <div className="error-text">SYSTEM_FAILURE: {error || "DATA_LINK_BROKEN"}</div>
-        <button className="btn-nav" onClick={() => window.location.reload()}>RETRY_CONNECTION</button>
-      </div>
-    );
-  }
+  if (loading) return <div className="initializing-screen"><div className="loader-text">INITIALIZING_SYSTEM...</div><div className="loader-bar"></div></div>;
+  if (error || !data) return <div className="error-screen">SYSTEM_FAILURE: {error}</div>;
 
   const { player, totalLevels, challenges } = data;
 
-  // คำนวณความคืบหน้า (Progress)
-  const progressPct = Math.min(
-    100,
-    Math.round(((player.level_reached - 1) / totalLevels) * 100)
-  );
+  // จัดกลุ่มโจทย์
+  const categories = {
+    Beginner: challenges.filter(c => c.category === 'Beginner'),
+    Intermediate: challenges.filter(c => c.category === 'Intermediate'),
+    Advanced: challenges.filter(c => c.category === 'Advanced')
+  };
 
-  // ฟังก์ชัน Logout
+  const progressPct = Math.min(100, Math.round(((player.level_reached - 1) / totalLevels) * 100));
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");
@@ -77,7 +53,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-body">
-      {/* --- NAVIGATION BAR --- */}
+      {/* --- NAVIGATION BAR (คืนค่าปุ่มเดิมทั้งหมด) --- */}
       <nav className="navbar">
         <div className="brand">HACKER_KING://DB</div>
         <div className="nav-actions">
@@ -111,7 +87,7 @@ const Dashboard = () => {
               SESSION_TOKEN: {Math.random().toString(36).substring(7).toUpperCase()}
             </div>
             <h1>WELCOME_OPERATOR: {player.username}</h1>
-            <p>ระบบตรวจพบช่องโหว่ในเลเยอร์ที่ 7... กรุณาเลือกเป้าหมายเพื่อเริ่มกระบวนการ Brute Force</p>
+            <p>ระบบตรวจพบช่องโหว่... กรุณาเลือกระดับเป้าหมายเพื่อเริ่มกระบวนการ</p>
             
             <div className="progress-wrapper">
               <div className="progress-container">
@@ -133,52 +109,60 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* --- TARGET LIST (LEVELS) --- */}
-        <h2 className="section-title">ACTIVE_TARGET_LIST</h2>
-        <div className="level-grid">
-          {challenges.map((row) => {
-            const isUnlocked = row.level_num <= player.level_reached;
-            const isCompleted = row.level_num < player.level_reached;
-            const isCurrent = row.level_num === player.level_reached;
+        <hr className="divider" />
 
-            // เลือก Emoji ตามประเภทด่าน
-            let emoji = "📡";
-            const titleLower = row.title.toLowerCase();
-            if (titleLower.includes("string")) emoji = "💉";
-            else if (titleLower.includes("numeric")) emoji = "🔢";
-            else if (row.level_num >= 5) emoji = "💀";
-
-            return (
-              <div 
-                key={row.id} 
-                className={`level-card 
-                  ${isUnlocked ? "unlocked" : "locked"} 
-                  ${isCompleted ? "completed" : ""} 
-                  ${isCurrent ? "current-target" : ""}`}
-              >
-                {!isUnlocked && (
-                  <div className="locked-overlay">
-                    <span className="lock-icon">🔒</span>
-                    <div className="access-denied-text">ENCRYPTED_DATA</div>
-                  </div>
-                )}
-                
-                <span className="level-icon">{emoji}</span>
-                <div className="level-name">{row.title}</div>
-                <div className="level-desc">{row.description}</div>
-                
-                {isUnlocked && (
-                  <button 
-                    className="btn-enter" 
-                      onClick={() => navigate(`/challenge/${row.level_num}`)}
-                  >
-                    {isCompleted ? "RE-RUN_EXPLOIT" : "EXECUTE_PAYLOAD"}
-                  </button>
-                )}
+        {/* --- TARGET SELECTION --- */}
+        {!selectedCategory ? (
+          <>
+            <div className="category-selection-grid">
+              <div className="cat-card beginner" onClick={() => setSelectedCategory('Beginner')}>
+                <div className="cat-icon">🛡️</div>
+                <h2>LEVEL: BEGINNER</h2>
+                <p>พื้นฐานการทำ SQL Injection Bypass</p>
+                <div className="cat-footer">{categories.Beginner.length} TARGETS</div>
               </div>
-            );
-          })}
-        </div>
+              <div className="cat-card intermediate" onClick={() => setSelectedCategory('Intermediate')}>
+                <div className="cat-icon">⚔️</div>
+                <h2>LEVEL: INTERMEDIATE</h2>
+                <p>การดึงข้อมูลข้ามตารางและค้นหาคีย์ลับ</p>
+                <div className="cat-footer">{categories.Intermediate.length} TARGETS</div>
+              </div>
+              <div className="cat-card advanced" onClick={() => setSelectedCategory('Advanced')}>
+                <div className="cat-icon">💀</div>
+                <h2>LEVEL: ADVANCED</h2>
+                <p>เทคนิคขั้นสูง Blind และ Error-based</p>
+                <div className="cat-footer">{categories.Advanced.length} TARGETS</div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="target-list-section">
+            <div className="list-header">
+              <button className="btn-back" onClick={() => setSelectedCategory(null)}>
+                [ ← BACK_TO_LEVELS ]
+              </button>
+            </div>
+            
+            <div className="level-grid">
+              {categories[selectedCategory].map((row) => {
+                const isUnlocked = row.level_num <= player.level_reached;
+                const isCompleted = row.level_num < player.level_reached;
+                return (
+                  <div key={row.id} className={`level-card ${isUnlocked ? "unlocked" : "locked"} ${isCompleted ? "completed" : ""}`}>
+                    {!isUnlocked && <div className="locked-overlay">🔒</div>}
+                    <div className="level-name">#{row.level_num} {row.title}</div>
+                    <div className="level-desc">{row.description}</div>
+                    {isUnlocked && (
+                      <button className="btn-enter" onClick={() => navigate(`/challenge/${row.level_num}`)}>
+                        {isCompleted ? "RE-RUN_EXPLOIT" : "EXECUTE_PAYLOAD"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -174,7 +174,7 @@ app.get('/api/challenges/:level_num', async (req, res) => {
 // --- [CHALLENGE API: EXECUTE EXPLOIT] ---
 // ตรวจสอบ Payload ที่ผู้เล่นส่งมาและอัปเดตคะแนน
 app.post('/api/execute-exploit', async (req, res) => {
-  const { userId, level, username, password, time_spent } = req.body;
+  const { userId, level, username, password, accessKeyFromUser } = req.body;
 
   try {
     const challengeRes = await pool.query('SELECT * FROM challenges WHERE level_num = $1', [level]);
@@ -182,44 +182,62 @@ app.post('/api/execute-exploit', async (req, res) => {
 
     const challenge = challengeRes.rows[0];
     
-    // --- จุดที่เลียนแบบ PHP: การสร้าง Query ที่ถูก Inject ---
-    let queryDisplay = challenge.sql_logic || "SELECT * FROM users WHERE username = '{ID}' AND password = '{KEY}'";
-    queryDisplay = queryDisplay.replace('{ID}', username).replace('{KEY}', password);
+    // --- จุดเปลี่ยนสำคัญ ---
+    // สร้าง SQL จริงโดยเอา INPUT จากผู้เล่นไปแทนที่ใน Template
+    let finalQuery = challenge.query_template || "SELECT * FROM users WHERE username = '{ID}' AND password = '{KEY}'";
+    finalQuery = finalQuery.replace('{ID}', username || "").replace('{KEY}', password || "");
 
+    console.log("🛠 EXECUTING_EXPLOIT:", finalQuery);
+
+    try {
+      // รัน Query จริงๆ ใน Database
+      const dbResult = await pool.query(finalQuery);
+      const rows = dbResult.rows;
+
+      // --- LOGIC การตรวจสอบชัยชนะ ---
+// --- LOGIC การตรวจสอบชัยชนะ (ปรับปรุงให้รองรับข้อ 11-30) ---
     let isSuccess = false;
 
-    // --- จุดที่สำคัญที่สุด: ลองรัน Query นั้นจริงๆ ใน DB จำลอง หรือตรวจสอบ Logic ---
-    try {
-      // วิธีที่ 1: รันในตาราง dummy 'users' เพื่อเช็คว่า Bypass ได้จริงไหม
-      // (คุณต้องมีตาราง users ใน Supabase ที่มีข้อมูลหลอกๆ ไว้ 1 row ด้วย)
-      const checkResult = await pool.query(queryDisplay);
-      
-      if (checkResult.rows.length > 0) {
-        isSuccess = true;
-      }
-    } catch (dbErr) {
-      // ถ้า Syntax ผิด (เช่น ใส่ Single Quote เกิน) จะถือว่าไม่ผ่านแบบใน PHP
-      return res.status(401).json({ status: 'fail', message: 'SQL_SYNTAX_ERROR: ' + dbErr.message });
-    }
-
-    if (isSuccess) {
-      const points = Math.max(100, 1000 - (time_spent * 2)); // Penalty แบบ PHP
-      await pool.query(
-        `UPDATE players 
-         SET score = score + $1, 
-             level_reached = GREATEST(level_reached, $2 + 1) 
-         WHERE id = $3`,
-        [points, level, userId]
-      );
-
-      res.json({
-        status: 'success',
-        message: `ACCESS GRANTED: SQL Injection สำเร็จ!`,
-        nextLevel: parseInt(level) + 1
-      });
+    if (challenge.category === 'Beginner') {
+      // ด่าน 1-10: ขอแค่ Query แล้วมีข้อมูลออกมา (Bypass Success)
+      isSuccess = rows.length > 0;
     } else {
-      res.status(401).json({ status: 'fail', message: 'ACCESS DENIED: ไม่สามารถข้ามการตรวจสอบได้' });
+      // ด่าน 11-30: ต้องเอา 'คำตอบ' ที่ได้จากตารางอื่น มากรอกในช่อง Password
+      // เราจะเช็คว่า password ที่ส่งมา (ซึ่งทำหน้าที่เป็นช่องกรอก Key) ตรงกับ access_key ในโจทย์ไหม
+      // ใช้ .trim() เพื่อกันคนเผลอเคาะ space bar และ .toLowerCase() ถ้าไม่ซีเรียสเรื่องตัวพิมพ์ใหญ่
+      isSuccess = (password && password.trim() === challenge.access_key);
     }
+
+      if (isSuccess) {
+        // อัปเดตคะแนนและเลเวล (ใช้ Logic เดิมของคุณ)
+        await pool.query(
+          `UPDATE players SET score = score + $1, level_reached = GREATEST(level_reached, $2 + 1) WHERE id = $3`,
+          [challenge.base_points || 100, level, userId]
+        );
+
+        return res.json({
+          status: "success",
+          message: "BREACH_SUCCESSFUL",
+          data: rows, // ส่งข้อมูลที่ Query ได้กลับไปให้หน้าบ้านโชว์เป็นตาราง
+          nextLevel: parseInt(level) + 1
+        });
+      } else {
+        return res.status(401).json({
+          status: "fail",
+          message: "INCORRECT_ACCESS_KEY", // เจาะได้แต่คีย์ผิด หรือเจาะไม่ได้เลย
+          data: rows // ยังส่งข้อมูลกลับไป เผื่อผู้เล่นต้องเอาไปหา Key ต่อ
+        });
+      }
+
+    } catch (dbErr) {
+      // กรณี SQL พัง (สำคัญมากสำหรับด่าน Error-based)
+      return res.status(400).json({
+        status: "error",
+        message: dbErr.message, // ส่ง Error Message กลับไปให้ผู้เล่นเห็น (เพื่อเจาะ Error-based)
+        sql_state: dbErr.code
+      });
+    }
+
   } catch (err) {
     res.status(500).json({ error: 'SYSTEM_FAILURE' });
   }
@@ -227,6 +245,7 @@ app.post('/api/execute-exploit', async (req, res) => {
 
 // 4. สั่งให้ Server เริ่มทำงาน
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 SERVER_RUNNING_ON_PORT_${PORT}`);
 });

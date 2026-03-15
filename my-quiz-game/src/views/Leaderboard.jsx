@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trophy, Medal, ChevronLeft, Target, BarChart3 } from 'lucide-react';
 import '../css/Leaderboard.css'; // เดี๋ยวเราจะสร้างไฟล์นี้กัน
-
+import { API } from "../config";
 const Leaderboard = () => {
     const [leaders, setLeaders] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -12,7 +12,7 @@ const Leaderboard = () => {
         const fetchLeaderboard = async () => {
             try {
                 // ดึงข้อมูลจาก API ตัวเดิมที่คุณมีใน server.js
-                const res = await fetch('http://localhost:3000/api/admin/players');
+                const res = await fetch(`${API}/api/admin/players`);
                 if (!res.ok) throw new Error('FETCH_FAILED');
                 
                 const data = await res.json();

@@ -45,6 +45,8 @@ body {
   padding: 40px;
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
+
+  
 }
 
 .login-container::after {

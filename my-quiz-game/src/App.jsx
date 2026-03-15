@@ -6,6 +6,7 @@ import Handbook from './views/Handbook';
 import DBExplorer from './views/DBExplorer';
 import Challenge from './views/Challenge';
 import Leaderboard from './views/Leaderboard';
+import Register from './views/Register';
 import './App.css';
 
 function App() {
@@ -17,7 +18,11 @@ function App() {
         
         {/* 2. เส้นทางสำหรับหน้า Login */}
         <Route path="/login" element={<Login />} />
-        
+        <Route path="/Register" element={<Register />} />
+
+
+
+
         {/* 3. หน้า Dashboard (สร้าง Mockup ไว้ก่อน เพื่อให้กด Login แล้วไม่พัง) */}
         <Route path="/dashboard" element={<Dashboard />} />
         

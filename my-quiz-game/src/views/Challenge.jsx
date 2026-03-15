@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../css/Challenge.css";
+import { API } from "../config";
 
-const API = "http://localhost:3000";
 
 const Challenge = () => {
 
@@ -33,11 +33,24 @@ const Challenge = () => {
   });
 
   const storedUser = JSON.parse(localStorage.getItem("user"));
-
+    const [resultDialog, setResultDialog] = useState({
+    open: false,
+    query: "",
+    data: []
+    });
   /* โหลด Challenge */
 
   useEffect(() => {
 
+    setMessage("");
+    setMsgType("");
+    setUsername("");
+    setPassword("");
+
+    setHint1Unlocked(false);
+    setHint2Unlocked(false);
+    setTime(0);
+    sessionStorage.removeItem("hacker_timer");
     if (!storedUser) {
       navigate("/login");
       return;
@@ -56,7 +69,11 @@ const Challenge = () => {
       }
 
       const data = await res.json();
-
+        if (!res.ok) {
+        setMsgType("error-text");
+        setMessage("SERVER_ERROR");
+        return;
+        }
       setChallenge(data);
 
     };
@@ -110,45 +127,41 @@ const Challenge = () => {
 
   /* EXECUTE EXPLOIT */
 
-  const executeExploit = async (e) => {
+    const executeExploit = async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API}/api/execute-exploit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: storedUser.id,
+            level: level,
+            username: username,
+            password: password,
+            time_spent: time,
+          }),
+        });
 
-    e.preventDefault();
+        const data = await res.json();
 
-    const res = await fetch(`${API}/api/execute-exploit`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: storedUser.id,
-        level: level,
-        username: username,
-        password: password,
-        time_spent: time,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (data.status === "success") {
-
-      setMsgType("success-text");
-      setMessage(data.message);
-
-      sessionStorage.removeItem("hacker_timer");
-
-      setTimeout(() => {
-        navigate(`/challenge/${parseInt(level) + 1}`);
-      }, 1500);
-
-    } else {
-
-      setMsgType("error-text");
-      setMessage(data.message);
-
-    }
-
-  };
+        if (data.status === "success") {
+          setMsgType("success-text");
+          setMessage(data.message);
+          setResultDialog({
+            open: true,
+            query: queryDisplay,
+            data: data.data || []
+          });
+        } else {
+          setMsgType("error-text");
+          // ถ้ามี message จาก DB (เช่น Syntax Error) ให้โชว์อันนั้น ถ้าไม่มีให้โชว์ Access Denied
+          setMessage(data.message || "ACCESS_DENIED"); 
+        }
+      } catch (err) {
+        setMsgType("error-text");
+        setMessage("CONNECTION_LOST_SATELLITE_OFFLINE");
+      }
+    };  
 
   if (!challenge)
     return <div className="loading">CONNECTING_TO_SATELLITE...</div>;
@@ -368,6 +381,81 @@ const Challenge = () => {
         </div>
 
       )}
+
+
+{resultDialog.open && (
+
+  <div className="hint-modal">
+
+    <div className="hint-box" style={{width:"600px"}}>
+
+      <div className="hint-header">
+        DATABASE BREACHED
+      </div>
+
+      <div className="hint-content">
+
+        <p><b>EXECUTED QUERY</b></p>
+
+        <code style={{display:"block",marginBottom:"15px"}}>
+          {resultDialog.query}
+        </code>
+
+        <p><b>DATA EXTRACTED</b></p>
+
+        {resultDialog.data.length > 0 ? (
+
+          <table style={{width:"100%",fontSize:"14px"}}>
+
+            <thead>
+              <tr>
+                {Object.keys(resultDialog.data[0]).map((k)=>(
+                  <th key={k}>{k}</th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {resultDialog.data.map((row,i)=>(
+                <tr key={i}>
+                  {Object.values(row).map((v,j)=>(
+                    <td key={j}>{v}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
+
+        ) : (
+          <p>ACCESS GRANTED</p>
+        )}
+
+      </div>
+
+    <button
+      className="btn-execute"
+      onClick={() => {
+        setResultDialog({ open: false, query: "", data: [] });
+        setTime(0);
+        setMessage(""); // ล้างข้อความ Success/Error ของด่านที่แล้ว
+        setUsername(""); // ล้าง Payload เดิม
+        setPassword("");
+        sessionStorage.removeItem("hacker_timer");
+        navigate(`/challenge/${parseInt(level) + 1}`);
+      }}
+    >
+      NEXT_PHASE()
+    </button>
+
+    </div>
+
+  </div>
+
+)}
+
+
+
 
     </div>
 

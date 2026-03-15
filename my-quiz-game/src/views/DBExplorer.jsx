@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../css/DBExplorer.css';
+import { API } from "../config";
 
 const DBExplorer = () => {
     const navigate = useNavigate();
@@ -14,8 +15,8 @@ const DBExplorer = () => {
 
     const fetchData = async () => {
         try {
-            const pRes = await fetch('http://localhost:3000/api/admin/players');
-            const cRes = await fetch('http://localhost:3000/api/admin/challenges');
+            const pRes = await fetch(`${API}/api/admin/players`);
+            const cRes = await fetch(`${API}/api/admin/challenges`);
             setPlayers(await pRes.json());
             setChallenges(await cRes.json());
             setLoading(false);

@@ -352,6 +352,8 @@ h2{
  color:#ddd;
  margin-bottom:20px;
  line-height:1.6;
+ overflow-x: auto; /* เพิ่มเพื่อให้ตารางที่กว้างเกินไปเลื่อนซ้ายขวาได้ใน Modal */
+  max-height: 400px; /* กันไม่ให้ Modal ยาวทะลุจอ */
 }
 
 .btn-close{
