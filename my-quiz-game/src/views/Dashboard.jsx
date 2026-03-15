@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 import "../css/Dashboard.css";
 import { API } from "../config";
+
+// เชื่อมต่อกับ Backend Socket
+const socket = io(API);
 
 const Dashboard = () => {
   const [data, setData] = useState(null);
@@ -10,30 +14,39 @@ const Dashboard = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const navigate = useNavigate();
 
-  // ✅ ดึงคะแนนรอบปัจจุบันจาก LocalStorage (จะถูกรีเซ็ตเป็น 0 ในหน้า Login)
+  // ✅ ดึงคะแนนรอบปัจจุบันจาก LocalStorage
   const sessionScore = parseInt(localStorage.getItem("sessionScore")) || 0;
 
-  useEffect(() => {
+  const fetchDashboardData = async () => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     if (!storedUser || !storedUser.id) {
       navigate("/login");
       return;
     }
 
-    const fetchDashboardData = async () => {
-      try {
-        const response = await fetch(`${API}/api/dashboard/${storedUser.id}`);
-        if (!response.ok) throw new Error("SERVER_ERROR");
-        const result = await response.json();
-        
-        setData(result);
-        setLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-      }
-    };
+    try {
+      const response = await fetch(`${API}/api/dashboard/${storedUser.id}`);
+      if (!response.ok) throw new Error("SERVER_ERROR");
+      const result = await response.json();
+      
+      setData(result);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
+
+    // ฟังคำสั่งจาก Server เมื่อมีการอัปเดตข้อมูล (Real-time Sync)
+    socket.on("update_data", () => {
+      console.log("📡 DASHBOARD_SYNC: Data updated via server.");
+      fetchDashboardData();
+    });
+
+    return () => socket.off("update_data");
   }, [navigate]);
 
   if (loading) {
@@ -51,47 +64,59 @@ const Dashboard = () => {
 
   const { player, totalLevels, challenges } = data;
 
-  // คำนวณค่าต่างๆ
+  // คำนวณความคืบหน้า
   const currentStep = player.current_step || 0;
   const total = totalLevels || 30;
   const progressPct = Math.min(100, Math.round((currentStep / total) * 100)) || 0;
 
+  // กรอง Category
   const categories = {
-    Beginner: challenges.filter((c) => c.category === "Beginner"),
-    Intermediate: challenges.filter((c) => c.category === "Intermediate"),
-    Advanced: challenges.filter((c) => c.category === "Advanced"),
+    Beginner: challenges?.filter((c) => c.category === "Beginner") || [],
+    Intermediate: challenges?.filter((c) => c.category === "Intermediate") || [],
+    Advanced: challenges?.filter((c) => c.category === "Advanced") || [],
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("sessionScore"); // ล้างคะแนนรอบปัจจุบันทิ้ง
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (storedUser && storedUser.id) {
+        await fetch(`${API}/api/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: storedUser.id }),
+        });
+      }
+    } catch (err) {
+      console.error("LOGOUT_ERROR:", err);
+    } finally {
+      localStorage.removeItem("user");
+      localStorage.removeItem("sessionScore");
+      navigate("/login");
+    }
   };
 
   return (
     <div className="dashboard-body">
-      {/* --- NAVIGATION BAR --- */}
+      {/* เอฟเฟกต์เส้นสแกนฉากหลัง */}
+      <div className="scanner-line"></div>
+      
       <nav className="navbar">
-        <div className="brand">HACKER_KING://DB</div>
+        <div className="brand">
+          HACKER_KING://DB <span className="status-dot"></span>
+        </div>
         <div className="nav-actions">
-          
-          {/* ✅ ปุ่ม Admin (แสดงเฉพาะ role === 1) */}
           {player && player.role === 1 && (
-            <>
-              <button className="btn-nav btn-admin" onClick={() => navigate("/admin")}>
-                [ ROOT_CONSOLE ]
+            <div className="admin-group" style={{ display: 'inline-block' }}>
+              <button className="btn-nav" onClick={() => navigate("/admin")}>
+                ROOT_CONSOLE
               </button>
-              <button className="btn-nav btn-explorer" onClick={() => navigate("/db-explorer")}>
-                [ DB_EXPLORER ]
+              <button className="btn-nav" onClick={() => navigate("/db-explorer")}>
+                DB_EXPLORER
               </button>
-            </>
+            </div>
           )}
-
-          <button className="btn-nav btn-academy" onClick={() => navigate("/handbook")}>
-            [ HANDBOOK ]
-          </button>
-          <button className="btn-nav btn-ranking" onClick={() => navigate("/leaderboard")}>
-            [ RANKING ]
+          <button className="btn-nav" onClick={() => navigate("/leaderboard")}>
+             RANKING
           </button>
           <button className="btn-nav btn-logout" onClick={handleLogout}>
             SHUTDOWN
@@ -100,95 +125,112 @@ const Dashboard = () => {
       </nav>
 
       <div className="container">
-        {/* --- HERO SECTION --- */}
+        {/* --- HERO & STATS SECTION --- */}
         <div className="hero-grid">
-          <div className="welcome-card">
+          <div className="welcome-card shadow-fx">
             <div className="token-id">
-              SESSION_TOKEN: {Math.random().toString(36).substring(7).toUpperCase()}
+              ID_PATH: {Math.random().toString(36).substring(7).toUpperCase()}
             </div>
             <h1>WELCOME_OPERATOR: {player.username}</h1>
-            <p>สถานะปัจจุบัน: กำลังดำเนินการเจาะระบบฐานข้อมูล...</p>
+            <p className="status-text">
+              <span className="blink">●</span> SYSTEM_READY: <span className="text-active">LIVE_SYNC_ESTABLISHED</span>
+            </p>
 
-            <div className="progress-wrapper">
-              <div className="progress-container">
-                <div className="progress-bar" style={{ width: `${progressPct}%` }} />
+            <div className="progress-section">
+              <div className="progress-info">
+                <span>SYSTEM_BREACH_LEVEL</span>
+                <span>{progressPct}%</span>
               </div>
-              <div className="progress-text">BREACH_PROGRESS: {progressPct}%</div>
+              <div className="progress-container">
+                <div className="progress-bar" style={{ width: `${progressPct}%` }}></div>
+              </div>
             </div>
           </div>
 
-          {/* --- STATS BOX (Session vs High Score) --- */}
-          <div className="stats-box">
-            <div className="stat-item highlight">
-              <div className="stat-label">SESSION_SCORE (CURRENT)</div>
+          <div className="stats-box shadow-fx">
+            <div className="stat-item">
+              <div className="stat-label">SESSION_SCORE</div>
               <div className="stat-val neon-text">{sessionScore.toLocaleString()}</div>
             </div>
             <div className="stat-item">
-              <div className="stat-label">PERSONAL_BEST (HIGH)</div>
-              <div className="stat-val">{(player.score || 0).toLocaleString()}</div>
+              <div className="stat-label">HIGH_SCORE</div>
+              <div className="stat-val-small">{(player.score || 0).toLocaleString()}</div>
             </div>
             <div className="stat-item">
               <div className="stat-label">MISSION_CLEARED</div>
-              <div className="stat-val">{currentStep} / {total}</div>
+              <div className="stat-val-small">{currentStep} <span className="text-muted">/ {total}</span></div>
             </div>
           </div>
         </div>
-
-        <hr className="divider" />
 
         {/* --- TARGET SELECTION --- */}
         {!selectedCategory ? (
           <div className="category-selection-grid">
             <div className="cat-card beginner" onClick={() => setSelectedCategory("Beginner")}>
               <div className="cat-icon">🛡️</div>
-              <h2>LEVEL: BEGINNER</h2>
-              <p>พื้นฐานการทำ SQL Injection Bypass</p>
-              <div className="cat-footer">{categories.Beginner.length} TARGETS</div>
+              <h2>BEGINNER</h2>
+              <p>Entry-level SQLi bypass techniques.</p>
+              <div className="cat-footer">{categories.Beginner.length} NODES AVAILABLE</div>
             </div>
+            
             <div className="cat-card intermediate" onClick={() => setSelectedCategory("Intermediate")}>
               <div className="cat-icon">⚔️</div>
-              <h2>LEVEL: INTERMEDIATE</h2>
-              <p>การดึงข้อมูลข้ามตารางและค้นหาคีย์ลับ</p>
-              <div className="cat-footer">{categories.Intermediate.length} TARGETS</div>
+              <h2>INTERMEDIATE</h2>
+              <p>Cross-table data extraction & keys.</p>
+              <div className="cat-footer">{categories.Intermediate.length} NODES AVAILABLE</div>
             </div>
+
             <div className="cat-card advanced" onClick={() => setSelectedCategory("Advanced")}>
               <div className="cat-icon">💀</div>
-              <h2>LEVEL: ADVANCED</h2>
-              <p>เทคนิคขั้นสูง Blind และ Error-based</p>
-              <div className="cat-footer">{categories.Advanced.length} TARGETS</div>
+              <h2>ADVANCED</h2>
+              <p>Blind & Error-based exploitation.</p>
+              <div className="cat-footer">{categories.Advanced.length} NODES AVAILABLE</div>
             </div>
           </div>
         ) : (
-          <div className="target-list-section">
+          <div className="target-list-section animate-in">
             <div className="list-header">
-              <button className="btn-back" onClick={() => setSelectedCategory(null)}>
-                [ ← BACK_TO_LEVELS ]
+              <button className="btn-back-main" onClick={() => setSelectedCategory(null)}>
+                &lt; RETURN_TO_MENU
               </button>
-              <h2 className="selected-cat-title">TARGET_LIST: {selectedCategory.toUpperCase()}</h2>
+              <h2 className="selected-cat-title">
+                SECTOR: <span className="text-active">{selectedCategory.toUpperCase()}</span>
+              </h2>
             </div>
 
             <div className="level-grid">
               {categories[selectedCategory].map((row) => (
                 <div 
                   key={row.challenge_id} 
-                  className={`level-card ${!row.is_locked ? "unlocked" : "locked"} ${row.is_completed ? "completed" : ""}`}
+                  className={`level-node ${!row.is_locked ? "unlocked" : "locked"} ${row.is_completed ? "completed" : ""}`}
                 >
+                  <div className="node-header">
+                    <span className="node-id">NODE_{row.display_level.toString().padStart(3, '0')}</span>
+                    {row.is_completed && <span className="node-tag">COMPLETED</span>}
+                  </div>
+                  
                   {!row.is_locked ? (
-                    <>
-                      <div className="level-name">#{row.display_level} {row.title}</div>
-                      <div className="level-desc">{row.description}</div>
+                    <div className="node-body">
+                      <h3 className="node-title">{row.title}</h3>
+                      <p className="node-desc">{row.description}</p>
                       <button 
-                        className="btn-enter" 
+                        className="btn-execute" 
                         onClick={() => navigate(`/challenge/${row.display_level}`)}
                       >
                         {row.is_completed ? "RE-RUN_EXPLOIT" : "EXECUTE_PAYLOAD"}
                       </button>
-                    </>
+                    </div>
                   ) : (
-                    <div className="locked-content">🔒 LOCKED_BY_SYSTEM</div>
+                    <div className="node-locked">
+                      <div className="lock-icon">🔒</div>
+                      <div className="lock-text">ACCESS_DENIED: ENCRYPTED</div>
+                    </div>
                   )}
                 </div>
               ))}
+              {categories[selectedCategory].length === 0 && (
+                <div className="no-data-msg">[ NO_TARGETS_FOUND_IN_THIS_SECTOR ]</div>
+              )}
             </div>
           </div>
         )}

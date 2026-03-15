@@ -121,3 +121,134 @@
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- LEADERBOARD SPECIFIC --- */
+
+.leaderboard-bg::before {
+    background: 
+        radial-gradient(circle at 50% 0%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 0% 100%, rgba(34, 211, 238, 0.05) 0%, transparent 40%);
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.cyber-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 4px;
+    text-shadow: 0 0 20px var(--primary-glow);
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-family: 'Sarabun', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+}
+
+/* Table Styling */
+.table-wrapper {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    margin-bottom: 30px;
+}
+
+.rank-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Fira Code', monospace;
+}
+
+.rank-table th {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 20px;
+    text-align: left;
+    color: var(--primary);
+    font-size: 12px;
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.rank-row {
+    transition: all 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.rank-row:hover {
+    background: rgba(168, 85, 247, 0.03);
+}
+
+.rank-cell, .codename, .level-cell, .score-cell {
+    padding: 18px 20px;
+}
+
+/* Rank Icons */
+.gold-glow { color: #ffd700; filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5)); }
+.silver-glow { color: #c0c0c0; filter: drop-shadow(0 0 8px rgba(192, 192, 192, 0.4)); }
+.bronze-glow { color: #cd7f32; filter: drop-shadow(0 0 8px rgba(205, 127, 50, 0.4)); }
+
+.rank-number {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.codename {
+    color: #fff;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.king-tag {
+    margin-left: 12px;
+    font-size: 9px;
+    background: var(--primary);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.phase-text { color: var(--text-muted); font-size: 12px; }
+.phase-num { color: var(--secondary); font-weight: bold; }
+
+.score-val {
+    color: var(--warning);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.unit { font-size: 10px; color: var(--text-muted); }
+
+/* Special styling for top rank */
+.rank-1 {
+    background: rgba(168, 85, 247, 0.05);
+}
+.rank-1 .codename {
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary-glow);
+}
+
+.footer-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pulse-icon {
+    color: var(--danger);
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}

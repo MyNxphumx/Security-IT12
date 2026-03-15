@@ -102,7 +102,7 @@
     display: block;
     font-size: 10px;
     color: #64748b;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
     font-family: 'Fira Code', monospace;
     text-transform: uppercase;
 }
@@ -113,12 +113,13 @@
     width: 100%;
     background: #000;
     border: 1px solid var(--border);
-    padding: 10px;
     color: var(--neon);
     font-family: 'Fira Code', monospace;
     margin-bottom: 15px;
     box-sizing: border-box;
     outline: none;
+    margin-bottom: 12px; /* ลดจาก 15px */
+    padding: 8px 10px; /* ลดความหนาลงเล็กน้อย */
 }
 
 .admin-body input:focus, 
@@ -299,4 +300,71 @@
     .admin-body table {
         min-width: 600px;
     }
+}
+
+/* ตัดข้อความที่ยาวเกินไป */
+/* แทนที่ .truncate เดิม หรือเพิ่มเข้าไป */
+.truncate-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0; /* เทคนิคเพื่อให้ ellipsis ทำงานใน table-layout: fixed */
+}
+
+.fixed-table {
+    table-layout: fixed; /* บังคับความกว้างคอลัมน์ */
+    width: 100%;
+}
+
+/* รหัสสีสถานะ */
+.status-online { color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+.status-offline { color: #ff4444; opacity: 0.5; }
+
+/* input สำหรับ ID ที่แก้ไม่ได้ */
+.input-readonly {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+}
+
+.form-group-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.role-tag {
+    font-size: 0.7em;
+    color: #fbbf24;
+    margin-left: 5px;
+}
+
+.btn-cancel {
+    background: transparent;
+    border: 1px solid #475569;
+    color: #94a3b8;
+    width: 100%;
+    margin-top: 5px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.btn-cancel:hover {
+    color: #fff;
+    border-color: #fff;
+}
+
+/* เพิ่มเติมในส่วน Form Elements */
+.admin-body select {
+    appearance: none; /* ลบลูกศรเดิม */
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 15px;
+    padding-right: 30px;
+}
+
+.admin-body select option {
+    background: #000;
+    color: var(--neon);
 }

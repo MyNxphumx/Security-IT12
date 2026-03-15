@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import "../css/Challenge.css";
 import { API } from "../config";
-
+import { io } from "socket.io-client";
+const socket = io(API);
 const Challenge = () => {
   const { level } = useParams();
   const navigate = useNavigate();
@@ -136,7 +137,11 @@ const Challenge = () => {
         // ✅ อัปเดตข้อมูล User ใน LocalStorage เพื่อให้ Dashboard เห็นค่าใหม่
         const updatedUser = { ...storedUser, current_step: data.nextLevel - 1 };
         localStorage.setItem("user", JSON.stringify(updatedUser));
-
+        socket.emit("player_cleared", { 
+                userId: storedUser.id, 
+                username: storedUser.username,
+                level: level 
+            });
       } else {
         setMsgType("error-text");
         setMessage(data.message || "ACCESS_DENIED");
