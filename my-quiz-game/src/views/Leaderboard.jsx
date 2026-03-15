@@ -67,7 +67,7 @@ const Leaderboard = () => {
                                 <th>RANK</th>
                                 <th>CODENAME</th>
                                 <th><Target size={14} style={{marginRight: '5px'}}/>LEVEL</th>
-                                <th>SCORE</th>
+                                <th>Max SCORE</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -79,7 +79,9 @@ const Leaderboard = () => {
                                         </div>
                                     </td>
                                     <td className="codename">{player.username}</td>
-                                    <td className="level-cell">PHASE_{player.level_reached.toString().padStart(2, '0')}</td>
+                                    <td className="level-cell">
+                                        PHASE_{ Math.max(0, player.level_reached - 1).toString().padStart(2, '0') }
+                                    </td>
                                     <td className="score-cell">
                                         {player.score.toLocaleString()} <span className="unit">PTS</span>
                                     </td>

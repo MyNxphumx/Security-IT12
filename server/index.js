@@ -29,46 +29,80 @@ pool.connect((err) => {
 
 // 3. Route สำหรับ Login (ฉบับปรับปรุงเพื่อตาราง players)
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+    const { username, password } = req.body;
 
-  try {
-    // ค้นหาข้อมูลจากตาราง players ตามโครงสร้างจริงใน Supabase
-    const result = await pool.query('SELECT * FROM players WHERE username = $1', [username]);
-    
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'INVALID_IDENTIFIER' });
+    try {
+        const result = await pool.query('SELECT * FROM players WHERE username = $1', [username]);
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'INVALID_IDENTIFIER' });
+        }
+
+        let user = result.rows[0];
+        const compatibleHash = user.password.replace(/^\$2y\$/, '$2a$');
+        const isMatch = await bcrypt.compare(password, compatibleHash);
+
+        // 🛑 แก้ไขจุดนี้: ถ้า Password ไม่ตรง ให้หยุดทำงานทันที
+        if (!isMatch) {
+            return res.status(401).json({ error: 'INVALID_ENCRYPTED_KEY' });
+        }
+
+        // ✅ ถ้าผ่านมาถึงตรงนี้ได้ แปลว่า Username และ Password ถูกต้องแน่นอน
+        console.log(`🎲 Re-shuffling challenges for ${username}...`);
+
+        // --- ส่วนลอจิก Shuffle แบบแบ่งระดับ (Grouped Shuffle) ---
+        const allChallenges = await pool.query('SELECT id, category FROM challenges');
+        const rows = allChallenges.rows;
+
+        // 1. แยกกลุ่ม ID ตาม Category
+        const beginnerIds = rows.filter(c => c.category === 'Beginner').map(c => c.id);
+        const intermediateIds = rows.filter(c => c.category === 'Intermediate').map(c => c.id);
+        const advancedIds = rows.filter(c => c.category === 'Advanced').map(c => c.id);
+
+        // 2. ฟังก์ชันสำหรับ Shuffle
+        const shuffleArray = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        };
+
+        // 3. รวมลำดับใหม่
+        const finalSequence = [
+            ...shuffleArray(beginnerIds),
+            ...shuffleArray(intermediateIds),
+            ...shuffleArray(advancedIds)
+        ];
+
+        // 4. บันทึกลง Database และรีเซ็ต Step
+        await pool.query(
+            'UPDATE players SET shuffled_sequence = $1, current_step = 0 WHERE id = $2', 
+            [finalSequence, user.id]
+        );
+
+        // ✅ ส่ง Response กลับ (ย้ายมาไว้ในจุดที่การันตีว่ารหัสถูก)
+        console.log(`User ${username} logged in successfully!`);
+// ... (Logic เช็ค Password และ Shuffle เหมือนเดิม) ...
+
+
+        res.json({
+            message: 'AUTH_SUCCESS',
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role, // เพิ่มบรรทัดนี้!
+                highScore: user.score,
+                currentScore: 0,
+                currentStep: 0
+            }
+        });
+
+    } catch (err) {
+        console.error('SERVER_ERROR:', err);
+        res.status(500).json({ error: 'SYSTEM_FAILURE' });
     }
-
-    const user = result.rows[0];
-
-    // แก้ไขรหัสผ่าน $2y$ (PHP) ให้เป็น $2a$ (Node.js) เพื่อให้ bcryptjs ตรวจสอบได้
-    const compatibleHash = user.password.replace(/^\$2y\$/, '$2a$');
-
-    // ตรวจสอบความถูกต้องของรหัสผ่าน
-    const isMatch = await bcrypt.compare(password, compatibleHash);
-    
-    if (!isMatch) {
-      return res.status(401).json({ error: 'ENCRYPTED_KEY_MISMATCH' });
-    }
-
-    // AUTH SUCCESS: ส่งข้อมูลกลับไปให้ Frontend
-    console.log(`User ${username} logged in successfully!`);
-    res.json({
-      message: 'AUTH_SUCCESS',
-      user: { 
-        id: user.id, 
-        username: user.username,
-        score: user.score,
-        level: user.level_reached 
-      }
-    });
-
-  } catch (err) {
-    console.error('SERVER_ERROR:', err);
-    res.status(500).json({ error: 'SYSTEM_FAILURE' });
-  }
 });
-
 
 
 // ดึงข้อมูล Dashboard ของ User
@@ -76,19 +110,48 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/dashboard/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // ดึงข้อมูลจากตาราง players ตามภาพของคุณ
-    const playerRes = await pool.query('SELECT * FROM players WHERE id = $1', [id]);
     
-    if (playerRes.rows.length === 0) {
-      return res.status(404).json({ error: 'PLAYER_NOT_FOUND' });
+    // 1. ดึงข้อมูล Player (ที่มี shuffled_sequence และ current_step)
+    const playerRes = await pool.query('SELECT * FROM players WHERE id = $1', [id]);
+    if (playerRes.rows.length === 0) return res.status(404).json({ error: 'PLAYER_NOT_FOUND' });
+    const player = playerRes.rows[0];
+
+    // 2. ดึงโจทย์ทั้งหมด 30 ข้อมาเก็บไว้ในตัวแปร (เพื่อเอาไป Map)
+    const challengesRes = await pool.query('SELECT id, title, category FROM challenges');
+    const allChallenges = challengesRes.rows;
+
+    // 3. สร้างรายการด่าน 30 ด่านตามลำดับใน shuffled_sequence
+    // ถ้า shuffled_sequence ว่าง (เช่น เพิ่งสมัคร) ให้ทำการสร้างลำดับใหม่
+    let sequence = player.shuffled_sequence;
+    if (!sequence || sequence.length === 0) {
+        sequence = allChallenges.map(c => c.id).sort(() => Math.random() - 0.5);
+        await pool.query('UPDATE players SET shuffled_sequence = $1 WHERE id = $2', [sequence, id]);
     }
 
-    const challengesRes = await pool.query('SELECT * FROM challenges ORDER BY level_num ASC');
+    const dashboardChallenges = sequence.map((challengeId, index) => {
+      const challengeInfo = allChallenges.find(c => c.id === challengeId);
+      const displayLevel = index + 1; // ด่านที่ 1, 2, 3...30
 
+      return {
+        display_level: displayLevel,
+        challenge_id: challengeId,
+        title: challengeInfo ? challengeInfo.title : `Challenge ${displayLevel}`,
+        category: challengeInfo ? challengeInfo.category : 'N/A',
+        is_locked: index > player.current_step, // ล็อคถ้าลำดับยังมาไม่ถึง
+        is_completed: index < player.current_step
+      };
+    });
+
+    // ✅ เพิ่มฟิลด์ role เข้าไปใน player object
     res.json({
-      player: playerRes.rows[0],
-      challenges: challengesRes.rows,
-      totalLevels: challengesRes.rows.length
+        player: {
+            username: player.username,
+            score: player.score,
+            role: player.role, // เพิ่มบรรทัดนี้!
+            current_step: player.current_step
+        },
+        challenges: dashboardChallenges,
+        totalLevels: 30
     });
   } catch (err) {
     console.error(err);
@@ -137,36 +200,38 @@ app.post('/api/admin/challenges/upsert', async (req, res) => {
 });
 
 
-app.get('/api/challenges/:level_num', async (req, res) => {
-    const { level_num } = req.params;
-    const { userId } = req.query; // รับจาก ?userId=... ที่ Frontend ส่งมา
+app.get('/api/challenges/:display_level', async (req, res) => {
+    const { display_level } = req.params; // รับเลข 1 - 30
+    const { userId } = req.query;
 
     try {
-        if (!userId) return res.status(400).json({ error: "MISSING_USER_ID" });
+        const stepIndex = parseInt(display_level) - 1; // แปลงเป็น Index 0 - 29
 
-        // 1. ใช้ pool.query (ไม่ใช่ db.query)
-        const player = await pool.query('SELECT level_reached FROM players WHERE id = $1', [userId]);
-        
+        // 1. ดึงข้อมูลลำดับการเล่นของ User
+        const player = await pool.query('SELECT shuffled_sequence, current_step FROM players WHERE id = $1', [userId]);
         if (player.rows.length === 0) return res.status(404).json({ error: "USER_NOT_FOUND" });
         
-        const currentLevel = player.rows[0].level_reached;
+        const { shuffled_sequence, current_step } = player.rows[0];
 
-        // 2. ตรวจสอบสิทธิ์
-        if (parseInt(level_num) > currentLevel) {
-            return res.status(403).json({ 
-                error: "ACCESS_DENIED", 
-                message: "คุณยังไม่ได้ปลดล็อคด่านนี้!" 
-            });
+        // 2. ตรวจสอบสิทธิ์: ห้ามเล่นข้ามลำดับ (เช่น จะเล่นด่าน 5 แต่ current_step อยู่แค่ 2)
+        if (stepIndex > current_step) {
+            return res.status(403).json({ error: "ACCESS_DENIED", message: "ด่านนี้ยังไม่ปลดล็อค" });
         }
 
-        // 3. ส่งข้อมูลโจทย์
-        const challenge = await pool.query('SELECT * FROM challenges WHERE level_num = $1', [level_num]);
+        // 3. หา ID จริงจากลำดับที่สุ่มไว้
+        const realChallengeId = shuffled_sequence[stepIndex];
+
+        // 4. ดึงข้อมูลโจทย์จริงออกมา
+        const challenge = await pool.query('SELECT * FROM challenges WHERE id = $1', [realChallengeId]);
         if (challenge.rows.length === 0) return res.status(404).json({ error: "CHALLENGE_NOT_FOUND" });
         
-        res.json(challenge.rows[0]);
+        // ส่งข้อมูลโจทย์กลับไป (โดยที่หน้าบ้านจะเห็นว่าเป็น "ด่านที่ X" ตามที่เขากดมา)
+        res.json({
+            ...challenge.rows[0],
+            display_level: display_level // ส่งเลขลำดับกลับไปให้ UI โชว์ด้วย
+        });
 
     } catch (err) {
-        console.error(err);
         res.status(500).json({ error: "SERVER_ERROR" });
     }
 });
@@ -174,74 +239,71 @@ app.get('/api/challenges/:level_num', async (req, res) => {
 // --- [CHALLENGE API: EXECUTE EXPLOIT] ---
 // ตรวจสอบ Payload ที่ผู้เล่นส่งมาและอัปเดตคะแนน
 app.post('/api/execute-exploit', async (req, res) => {
-  const { userId, level, username, password, accessKeyFromUser } = req.body;
+  // เพิ่ม sessionScore (คะแนนรวมที่สะสมมาตั้งแต่ Login รอบนี้) รับมาจากหน้าบ้าน
+  const { userId, displayStep, username, password, sessionScore } = req.body; 
 
   try {
-    const challengeRes = await pool.query('SELECT * FROM challenges WHERE level_num = $1', [level]);
-    if (challengeRes.rows.length === 0) return res.status(404).json({ error: 'INVALID_LEVEL' });
+    const stepIndex = parseInt(displayStep) - 1;
 
-    const challenge = challengeRes.rows[0];
+    // 1. ดึงข้อมูลลำดับโจทย์
+    const playerRes = await pool.query('SELECT shuffled_sequence, current_step, score FROM players WHERE id = $1', [userId]);
+    if (playerRes.rows.length === 0) return res.status(404).json({ error: 'USER_NOT_FOUND' });
     
-    // --- จุดเปลี่ยนสำคัญ ---
-    // สร้าง SQL จริงโดยเอา INPUT จากผู้เล่นไปแทนที่ใน Template
+    const { shuffled_sequence, current_step, score: highScore } = playerRes.rows[0];
+    const realChallengeId = shuffled_sequence[stepIndex];
+
+    // 2. ดึงข้อมูลโจทย์จริง
+    const challengeRes = await pool.query('SELECT * FROM challenges WHERE id = $1', [realChallengeId]);
+    const challenge = challengeRes.rows[0];
+
+    // ... (ลอจิกการสร้าง finalQuery และรัน dbResult เหมือนเดิม) ...
     let finalQuery = challenge.query_template || "SELECT * FROM users WHERE username = '{ID}' AND password = '{KEY}'";
     finalQuery = finalQuery.replace('{ID}', username || "").replace('{KEY}', password || "");
+    const dbResult = await pool.query(finalQuery);
+    const rows = dbResult.rows;
 
-    console.log("🛠 EXECUTING_EXPLOIT:", finalQuery);
-
-    try {
-      // รัน Query จริงๆ ใน Database
-      const dbResult = await pool.query(finalQuery);
-      const rows = dbResult.rows;
-
-      // --- LOGIC การตรวจสอบชัยชนะ ---
-// --- LOGIC การตรวจสอบชัยชนะ (ปรับปรุงให้รองรับข้อ 11-30) ---
+    // --- LOGIC การตรวจสอบชัยชนะ ---
     let isSuccess = false;
-
     if (challenge.category === 'Beginner') {
-      // ด่าน 1-10: ขอแค่ Query แล้วมีข้อมูลออกมา (Bypass Success)
       isSuccess = rows.length > 0;
     } else {
-      // ด่าน 11-30: ต้องเอา 'คำตอบ' ที่ได้จากตารางอื่น มากรอกในช่อง Password
-      // เราจะเช็คว่า password ที่ส่งมา (ซึ่งทำหน้าที่เป็นช่องกรอก Key) ตรงกับ access_key ในโจทย์ไหม
-      // ใช้ .trim() เพื่อกันคนเผลอเคาะ space bar และ .toLowerCase() ถ้าไม่ซีเรียสเรื่องตัวพิมพ์ใหญ่
       isSuccess = (password && password.trim() === challenge.access_key);
     }
 
-      if (isSuccess) {
-        // อัปเดตคะแนนและเลเวล (ใช้ Logic เดิมของคุณ)
-        await pool.query(
-          `UPDATE players SET score = score + $1, level_reached = GREATEST(level_reached, $2 + 1) WHERE id = $3`,
-          [challenge.base_points || 100, level, userId]
-        );
+    if (isSuccess) {
+      const pointsForThisLevel = challenge.base_points || 100;
+      // คำนวณคะแนนรวมใน Session นี้ (คะแนนที่ทำได้ตั้งแต่เริ่ม Login รอบนี้)
+      const newPotentialScore = sessionScore + pointsForThisLevel;
 
-        return res.json({
-          status: "success",
-          message: "BREACH_SUCCESSFUL",
-          data: rows, // ส่งข้อมูลที่ Query ได้กลับไปให้หน้าบ้านโชว์เป็นตาราง
-          nextLevel: parseInt(level) + 1
-        });
-      } else {
-        return res.status(401).json({
-          status: "fail",
-          message: "INCORRECT_ACCESS_KEY", // เจาะได้แต่คีย์ผิด หรือเจาะไม่ได้เลย
-          data: rows // ยังส่งข้อมูลกลับไป เผื่อผู้เล่นต้องเอาไปหา Key ต่อ
-        });
-      }
+      // ✅ อัปเดต DB โดยใช้ GREATEST เพื่อบันทึกเฉพาะ High Score
+      // และอัปเดต current_step เฉพาะเมื่อเล่นด่านใหม่
+      await pool.query(
+        `UPDATE players 
+         SET score = GREATEST(score, $1), 
+             current_step = CASE WHEN $2 = current_step THEN current_step + 1 ELSE current_step END 
+         WHERE id = $3`,
+        [newPotentialScore, stepIndex, userId]
+      );
 
-    } catch (dbErr) {
-      // กรณี SQL พัง (สำคัญมากสำหรับด่าน Error-based)
-      return res.status(400).json({
-        status: "error",
-        message: dbErr.message, // ส่ง Error Message กลับไปให้ผู้เล่นเห็น (เพื่อเจาะ Error-based)
-        sql_state: dbErr.code
+      return res.json({
+        status: "success",
+        message: "BREACH_SUCCESSFUL",
+        pointsGained: pointsForThisLevel,
+        newSessionScore: newPotentialScore, // ส่งคะแนนสะสมรอบนี้กลับไปให้หน้าบ้านบวกต่อ
+        nextLevel: parseInt(displayStep) + 1
       });
+    } else {
+      return res.status(401).json({ status: "fail", message: "INCORRECT_ACCESS_KEY", data: rows });
     }
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'SYSTEM_FAILURE' });
   }
 });
+
+
+
 
 // 4. สั่งให้ Server เริ่มทำงาน
 const PORT = process.env.PORT || 3000;
