@@ -106,59 +106,75 @@ const Challenge = () => {
   };
 
   /* 5. EXECUTE EXPLOIT (ด่านปกติ) */
-  const executeExploit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API}/api/execute-exploit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: storedUser.id,
-          displayStep: level,
-          username: username,
-          password: password,
-          sessionScore: sessionScore,
-          time_spent: time,
-        }),
+const executeExploit = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await fetch(`${API}/api/execute-exploit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: storedUser.id,
+        displayStep: level,
+        username: username,
+        password: password,
+        sessionScore: sessionScore,
+        time_spent: time,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.status === "success") {
+      setMsgType("success-text");
+      setMessage(data.message);
+
+      // ✅ เก็บข้อมูลลง State หลักเพื่อให้ตารางหน้าจอ (result-panel) แสดงผล
+      // ตรวจสอบว่าเป็น Array หรือไม่เพื่อป้องกัน Error
+      const resultData = Array.isArray(data.data) ? data.data : (data.data ? [data.data] : []);
+      
+      // ✅ ใช้ชุดข้อมูลเดียวกันทั้งหน้าจอหลักและ Modal
+      setResultDialog({ 
+        open: true, 
+        query: queryDisplay, 
+        data: resultData 
       });
 
-      const data = await res.json();
+      // อัปเดตคะแนนและเลเวลตามปกติ
+      const newScore = data.newSessionScore;
+      setSessionScore(newScore);
+      localStorage.setItem("sessionScore", newScore);
 
-      if (data.status === "success") {
-        setMsgType("success-text");
-        setMessage(data.message);
-        setResultDialog({ open: true, query: queryDisplay, data: data.data || [] });
+      const updatedUser = { ...storedUser, current_step: data.nextLevel - 1 };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      socket.emit("player_cleared", { 
+        userId: storedUser.id, 
+        username: storedUser.username, 
+        level: level 
+      });
 
-        const newScore = data.newSessionScore;
-        setSessionScore(newScore);
-        localStorage.setItem("sessionScore", newScore);
+      // ลอจิก Streak
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      localStorage.setItem("streak", newStreak);
 
-        const updatedUser = { ...storedUser, current_step: data.nextLevel - 1 };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        socket.emit("player_cleared", { userId: storedUser.id, username: storedUser.username, level: level });
-
-        // ✅ ลอจิก Streak
-        const newStreak = streak + 1;
-        setStreak(newStreak);
-        localStorage.setItem("streak", newStreak);
-
-        if (newStreak >= 6) {
-          if (challenge.category === "Beginner") triggerSpecialQuest("Intermediate");
-          else if (challenge.category === "Intermediate") triggerSpecialQuest("Advanced");
-          setStreak(0); // Reset streak หลังปลดล็อกโบนัส
-          localStorage.setItem("streak", 0);
-        }
-      } else {
-        setMsgType("error-text");
-        setMessage(data.message || "ACCESS_DENIED");
-        setStreak(0); // ตอบผิด Reset streak
+      if (newStreak >= 6) {
+        if (challenge.category === "Beginner") triggerSpecialQuest("Intermediate");
+        else if (challenge.category === "Intermediate") triggerSpecialQuest("Advanced");
+        setStreak(0);
         localStorage.setItem("streak", 0);
       }
-    } catch (err) {
+    } else {
       setMsgType("error-text");
-      setMessage("CONNECTION_LOST_SATELLITE_OFFLINE");
+      setMessage(data.message || "ACCESS_DENIED");
+      setStreak(0);
+      localStorage.setItem("streak", 0);
     }
-  };
+  } catch (err) {
+    setMsgType("error-text");
+    setMessage("CONNECTION_LOST_SATELLITE_OFFLINE");
+  }
+};
 
   /* 6. SUBMIT SPECIAL EXPLOIT (ด่านพิเศษ) */
   const handleSpecialSubmit = async () => {

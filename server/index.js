@@ -156,13 +156,34 @@ socket.on("player_ready", async ({ roomId }) => {
   });
 
   socket.on("finish_match", ({ roomId, userId, totalTime, finalScore }) => {
-    let match = activeMatches.get(roomId) || { results: [] };
-    activeMatches.set(roomId, match);
-    match.results.push({ userId, username: socket.playerData.username, totalTime, finalScore });
-    if (match.results.length === 1) {
-        io.to(roomId).emit("match_finished", { winnerId: userId, results: match.results });
-        setTimeout(() => activeMatches.delete(roomId), 5000);
-    }
+      let match = activeMatches.get(roomId) || { results: [] };
+      
+      // บันทึกผลลัพธ์ของคนที่ส่งเข้ามา
+      match.results.push({ 
+          userId, 
+          username: socket.playerData.username, 
+          totalTime, 
+          finalScore 
+      });
+      activeMatches.set(roomId, match);
+
+      // เช็คว่าแข่งกัน 2 คน (เมื่อทั้งคู่ส่งผลมาครบ หรือคนแรกส่งมาแต่ต้องการตัดสินเลย)
+      // แนะนำให้รอคนส่งมาครบ หรือใช้ Logic ใครส่งก่อนและคะแนนเยอะกว่าชนะ
+      if (match.results.length === 1) {
+          // หาคะแนนของอีกฝ่ายที่อยู่ใน Socket เพื่อส่งไปแสดงผลพร้อมกัน
+          const playersInRoom = syncRoomPlayers(roomId);
+          const p1 = match.results[0]; // คนที่เพิ่งส่ง
+          const p2 = playersInRoom.find(p => p.userId.toString() !== userId.toString());
+
+          io.to(roomId).emit("match_finished", { 
+              winnerId: p1.userId, 
+              p1Score: p1.finalScore,         // คะแนนคนชนะ
+              p2Score: p2 ? p2.score : 0,    // คะแนนคนแพ้ (ดึงจาก State ปัจจุบัน)
+              results: match.results 
+          });
+          
+          setTimeout(() => activeMatches.delete(roomId), 5000);
+      }
   });
 
   socket.on("update_progress", (data) => {
@@ -174,12 +195,17 @@ socket.on("player_ready", async ({ roomId }) => {
   });
 
   socket.on("leave_tournament", ({ roomId }) => {
-    socket.to(roomId).emit("opponent_left");
-    socket.leave(roomId);
-    socket.currentRoom = null;
-    if(socket.playerData) socket.playerData.isReady = false;
-    syncRoomPlayers(roomId);
-  });
+      // เช็คก่อนว่าแมตช์นี้จบไปหรือยัง ถ้ายังไม่จบถึงจะส่ง opponent_left
+      const match = activeMatches.get(roomId);
+      if (!match || match.results.length === 0) {
+          socket.to(roomId).emit("opponent_left");
+      }
+      
+      socket.leave(roomId);
+      socket.currentRoom = null;
+      if(socket.playerData) socket.playerData.isReady = false;
+      syncRoomPlayers(roomId);
+    });
 
   // ✅ ปรับปรุง Disconnect: ให้ครอบคลุมการปิดเบราว์เซอร์
   socket.on("disconnect", async () => {
@@ -339,74 +365,89 @@ app.get('/api/challenges/by-id/:id', async (req, res) => {
 
 app.post('/api/execute-exploit', async (req, res) => {
   const { userId, displayStep, username, password, sessionScore, isTournament, challengeId } = req.body; 
+  
   try {
     let challenge;
 
-    // 1. แยกแยะโหมดการดึงโจทย์
+    // 1. ค้นหาด่านที่ต้องการ (ลำดับความสำคัญ: challengeId > main path)
     if (challengeId) { 
-        // ✅ โหมดโจทย์พิเศษ (Hidden Quest) หรือ Tournament แบบระบุ ID
-        const cRes = await pool.query('SELECT * FROM challenges WHERE id = $1', [challengeId]);
-        challenge = cRes.rows[0];
-    } else if (isTournament) {
-        // โหมด Tournament ปกติ (ถ้ามีลอจิกอื่นเพิ่มเติม)
         const cRes = await pool.query('SELECT * FROM challenges WHERE id = $1', [challengeId]);
         challenge = cRes.rows[0];
     } else {
-        // โหมดด่านปกติ (Main Path)
         const playerRes = await pool.query('SELECT shuffled_sequence FROM players WHERE id = $1', [userId]);
+        const sequence = playerRes.rows[0]?.shuffled_sequence || [];
         const stepIndex = parseInt(displayStep) - 1;
-        const cRes = await pool.query('SELECT * FROM challenges WHERE id = $1', [playerRes.rows[0].shuffled_sequence[stepIndex]]);
+        
+        const cRes = await pool.query('SELECT * FROM challenges WHERE id = $1', [sequence[stepIndex]]);
         challenge = cRes.rows[0];
     }
+    
+    if (!challenge) return res.status(404).json({ error: "CHALLENGE_NOT_FOUND" });
 
-    // 2. ประมวลผล Query (เหมือนเดิม)
-    let finalQuery = (challenge.query_template || "SELECT * FROM users WHERE username = '{ID}' AND password = '{KEY}'")
-                     .replace('{ID}', username || "").replace('{KEY}', password || "");
+    // 2. จำลอง SQL Injection
+    const finalQuery = (challenge.query_template || "SELECT * FROM users WHERE username = '{ID}' AND password = '{KEY}'")
+                        .replace('{ID}', username || "")
+                        .replace('{KEY}', password || "");
     const dbResult = await pool.query(finalQuery);
 
-    // 3. ตรวจสอบเงื่อนไขการชนะ
-    let isSuccess = (challenge.category === 'Beginner') ? dbResult.rows.length > 0 : (password && password.trim() === challenge.access_key);
+    // 3. ตรวจสอบเงื่อนไขการชนะ (Flag Check)
+    let isSuccess = false;
+    const flags = challenge.flag_value;
+
+    if (Array.isArray(flags) && flags.includes(password)) {
+        isSuccess = true;
+    }
 
     if (isSuccess) {
       const points = challenge.base_points || 100;
-      const newScore = sessionScore + points;
+      const newScore = (sessionScore || 0) + points;
       
-      // ✅ จุดที่ปรับปรุง: บันทึกคะแนนลง Database เฉพาะเมื่อเป็น "ด่านปกติ" หรือ "โจทย์พิเศษ" 
-      // แต่จะไม่ขยับ current_step ถ้าเป็นโจทย์พิเศษ (challengeId)
+      // ✅ บันทึกคะแนนลง DB เฉพาะด่านปกติ/พิเศษ (ไม่ใช่ Tournament)
       if (!isTournament) {
           if (challengeId) {
-              // กรณี Hidden Quest: อัปเดตแค่คะแนนอย่างเดียว ไม่ขยับ Step ด่านหลัก
-              await pool.query('UPDATE players SET score = GREATEST(score, $1) WHERE id = $2', [newScore, userId]);
+              // Hidden Quest: อัปเดตคะแนน แต่ไม่เพิ่ม Step
+              await pool.query('UPDATE players SET score = score + $1 WHERE id = $2', [points, userId]);
           } else {
-              // กรณีด่านปกติ: อัปเดตทั้งคะแนนและขยับ Step
+              // ด่านปกติ: อัปเดตคะแนน + ขยับ Step (ถ้าเป็นด่านล่าสุด)
               await pool.query(
-                `UPDATE players SET score = GREATEST(score, $1), current_step = CASE WHEN $2 = current_step THEN current_step + 1 ELSE current_step END WHERE id = $3`,
-                [newScore, parseInt(displayStep)-1, userId]
+                `UPDATE players 
+                 SET score = score + $1, 
+                     current_step = CASE WHEN $2 = current_step THEN current_step + 1 ELSE current_step END 
+                 WHERE id = $3`,
+                [points, parseInt(displayStep) - 1, userId]
               );
           }
       }
       
       io.emit("update_data"); 
 
-      res.json({ 
+      return res.json({ 
         status: "success", 
         message: challengeId ? "HIDDEN_SYSTEM_BREACHED" : "BREACH_SUCCESSFUL",
         pointsGained: points, 
         newSessionScore: newScore, 
-        nextLevel: challengeId ? parseInt(displayStep) : parseInt(displayStep) + 1, // ถ้าเป็นด่านพิเศษ ไม่ต้องเพิ่ม Level หลัก
+        nextLevel: challengeId ? parseInt(displayStep) : parseInt(displayStep) + 1,
         explanation: challenge.explanation,
         data: dbResult.rows,
-        isSpecial: !!challengeId // ส่ง flag บอก Frontend ว่านี่คือผลจากด่านพิเศษนะ
+        isSpecial: !!challengeId
       });
 
     } else {
-      res.status(401).json({ status: "fail", message: "INCORRECT_PAYLOAD", data: dbResult.rows });
+      return res.status(401).json({ 
+        status: "fail", 
+        message: "INCORRECT_PAYLOAD", 
+        data: dbResult.rows 
+      });
     }
   } catch (err) { 
-    console.error(err);
-    res.status(500).json({ error: 'SYSTEM_FAILURE' }); 
+    console.error("EXPLOIT_ERROR:", err);
+    return res.status(500).json({ error: 'SYSTEM_FAILURE' }); 
   }
 });
+
+
+
+
 
 app.get('/api/players/online', async (req, res) => {
   try {
@@ -451,22 +492,62 @@ app.post('/api/admin/players/action', async (req, res) => {
 });
 
 app.get('/api/admin/challenges', async (req, res) => {
-    const result = await pool.query('SELECT * FROM challenges ORDER BY id ASC');
-    res.json(result.rows);
+    try {
+        const result = await pool.query(`
+            SELECT 
+                id, 
+                level_num, 
+                title, 
+                description, 
+                target_identifier, 
+                flag_value,  -- ✅ เพิ่มคอมม่าตรงนี้
+                base_points, 
+                category,
+                query_template,
+                hint_1,
+                hint_2
+            FROM challenges 
+            ORDER BY id ASC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'SERVER_ERROR' });
+    }
 });
 
 app.post('/api/admin/challenges/upsert', async (req, res) => {
-    const { id, title, description, query_template, access_key, hint_1, hint_2, category, base_points } = req.body;
+    const { id, title, description, query_template, flag_value, hint_1, hint_2, category, base_points } = req.body;
+
+    // ตรวจสอบข้อมูลเบื้องต้น
+    if (!id || !flag_value) {
+        return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
     const sql = `
-        INSERT INTO challenges (id, title, description, query_template, access_key, hint_1, hint_2, category, base_points)
+        INSERT INTO challenges (id, title, description, query_template, flag_value, hint_1, hint_2, category, base_points)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         ON CONFLICT (id) DO UPDATE SET
-        title = EXCLUDED.title, description = EXCLUDED.description, query_template = EXCLUDED.query_template,
-        access_key = EXCLUDED.access_key, hint_1 = EXCLUDED.hint_1, hint_2 = EXCLUDED.hint_2,
-        category = EXCLUDED.category, base_points = EXCLUDED.base_points`;
-    await pool.query(sql, [id, title, description, query_template, access_key, hint_1, hint_2, category, base_points]);
-    io.emit("update_data");
-    res.json({ success: true });
+        title = EXCLUDED.title, 
+        description = EXCLUDED.description, 
+        query_template = EXCLUDED.query_template,
+        flag_value = EXCLUDED.flag_value, 
+        hint_1 = EXCLUDED.hint_1, 
+        hint_2 = EXCLUDED.hint_2,
+        category = EXCLUDED.category, 
+        base_points = EXCLUDED.base_points`;
+
+    try {
+        await pool.query(sql, [id, title, description, query_template, flag_value, hint_1, hint_2, category, base_points]);
+        
+        // แจ้งเตือน Client ผ่าน Socket.io
+        if (io) io.emit("update_data"); 
+        
+        res.json({ success: true, message: "Challenge upserted successfully" });
+    } catch (error) {
+        console.error("Database Error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
 });
 
 

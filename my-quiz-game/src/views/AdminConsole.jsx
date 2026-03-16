@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 import '../css/AdminConsole.css';
 import { API } from "../config";
 
-// เชื่อมต่อกับ Backend Socket
 const socket = io(API);
 
 const AdminConsole = () => {
@@ -13,11 +12,12 @@ const AdminConsole = () => {
     const [challenges, setChallenges] = useState([]); 
     const [msg, setMsg] = useState("");
     
-    // --- [FORMS STATE] ---
+    // 1. แก้ไข State: เปลี่ยน access_key เป็น flag_value
     const [form, setForm] = useState({ 
         level_num: '', title: '', description: '', 
         sql_logic: 'string', target_identifier: '', 
-        access_key: '', hint_1: '', hint_2: '',
+        flag_value: '', // เปลี่ยนจุดนี้
+        hint_1: '', hint_2: '',
         query_template: '', base_points: 0, category: 'Beginner'
     });
 
@@ -25,7 +25,6 @@ const AdminConsole = () => {
         user_id: '', new_username: '', new_password: '', new_role: 0, new_score: 0 
     });
 
-    // --- [FETCH DATA] ---
     const fetchData = async () => {
         try {
             const pRes = await fetch(`${API}/api/admin/players`);
@@ -40,25 +39,27 @@ const AdminConsole = () => {
 
     useEffect(() => {
         fetchData();
-
-        // ฟังคำสั่งจาก Server เมื่อมีการอัปเดตข้อมูล
         socket.on("update_data", () => {
             console.log("📡 Real-time Update Received");
             fetchData();
         });
-
         return () => socket.off("update_data");
     }, []);
 
-    // --- [CHALLENGE ACTIONS] ---
     const handleSaveChallenge = async (e) => {
         e.preventDefault();
         
-        // แปลงค่าตัวเลขให้ปลอดภัย (ป้องกัน NaN)
+        // แปลง flag_value จาก String เป็น Array ก่อนส่ง (ตัดช่องว่างให้ด้วย)
+        const flagArray = typeof form.flag_value === 'string' 
+            ? form.flag_value.split(',').map(item => item.trim()) 
+            : form.flag_value;
+
         const payload = {
             ...form,
+            id: parseInt(form.level_num) || 0,
             level_num: parseInt(form.level_num) || 0,
-            base_points: parseInt(form.base_points) || 0
+            base_points: parseInt(form.base_points) || 0,
+            flag_value: flagArray // ส่งไปเป็น Array [ "flag1", "flag2" ]
         };
 
         try {
@@ -70,11 +71,11 @@ const AdminConsole = () => {
 
             if (res.ok) {
                 setMsg(`✅ CHALLENGE_SYNC: Level ${payload.level_num} updated.`);
-                // ล้างฟอร์มกลับเป็นค่าเริ่มต้น
                 setForm({ 
                     level_num: '', title: '', description: '', 
                     sql_logic: 'string', target_identifier: '', 
-                    access_key: '', hint_1: '', hint_2: '', 
+                    flag_value: '', // ล้างค่า flag_value
+                    hint_1: '', hint_2: '', 
                     query_template: '', base_points: 0, category: 'Beginner' 
                 });
                 
@@ -102,7 +103,6 @@ const AdminConsole = () => {
         }
     };
 
-    // --- [PLAYER ACTIONS] ---
     const prepareEditPlayer = (p) => {
         setUserForm({
             user_id: p.id,
@@ -152,172 +152,112 @@ const AdminConsole = () => {
     };
 
     return (
-        <div className="admin-body">
-            <div className="admin-container">
-                <header className="header">
-                    <h1>SUPER_ADMIN_CONSOLE <span className="live-tag">LIVE</span></h1>
-                    <button className="btn-exit" onClick={() => navigate('/dashboard')}>EXIT_ROOT</button>
-                </header>
+<div className="admin-body">
+    <div className="admin-container">
+        <header className="header">
+            <h1>SUPER_ADMIN_CONSOLE <span className="live-tag">LIVE</span></h1>
+            <button className="btn-exit" onClick={() => navigate('/dashboard')}>EXIT_ROOT</button>
+        </header>
 
-                {msg && <div className="msg-box">{msg}</div>}
+        {msg && <div className="msg-box">{msg}</div>}
 
-                <div className="grid">
-                    {/* --- Side Panel: Forms --- */}
-                    <div className="side-panel">
-                        <div className="card">
-                            <h2>DEPLOY_MISSION_CORE</h2>
-                            <form onSubmit={handleSaveChallenge}>
-                                <div className="form-group-row">
-                                    <div style={{flex:1}}><label>LVL_NUM</label><input type="number" value={form.level_num} onChange={e => setForm({...form, level_num: e.target.value})} required /></div>
-                                    <div style={{flex:2}}><label>CATEGORY</label>
-                                        <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                                            <option value="Beginner">Beginner</option>
-                                            <option value="Intermediate">Intermediate</option>
-                                            <option value="Advanced">Advanced</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <label>TITLE</label>
-                                <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required />
-                                
-                                <label>DESCRIPTION</label>
-                                <textarea rows="2" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
-                                
-                                <div className="form-group-row">
-                                    <div style={{flex:1}}><label>BASE_POINTS</label><input type="number" value={form.base_points} onChange={e => setForm({...form, base_points: e.target.value})} /></div>
-                                    <div style={{flex:1}}><label>SQL_LOGIC</label>
-                                        <select value={form.sql_logic} onChange={e => setForm({...form, sql_logic: e.target.value})}>
-                                            <option value="string">String Match</option>
-                                            <option value="result">Result Set Match</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <label>QUERY_TEMPLATE</label>
-                                <input type="text" placeholder="SELECT * FROM..." value={form.query_template} onChange={e => setForm({...form, query_template: e.target.value})} />
-                                
-                                <label style={{color: '#fbbf24'}}>TARGET_IDENTIFIER (EXPECTED)</label>
-                                <input type="text" value={form.target_identifier} onChange={e => setForm({...form, target_identifier: e.target.value})} required />
-                                
-                                <label style={{color: '#fbbf24'}}>ACCESS_KEY (PAYLOAD)</label>
-                                <input type="text" value={form.access_key} onChange={e => setForm({...form, access_key: e.target.value})} />
-
-                                <div className="form-group-row">
-                                    <div style={{flex:1}}><label>HINT_1</label><input type="text" value={form.hint_1} onChange={e => setForm({...form, hint_1: e.target.value})} /></div>
-                                    <div style={{flex:1}}><label>HINT_2</label><input type="text" value={form.hint_2} onChange={e => setForm({...form, hint_2: e.target.value})} /></div>
-                                </div>
-
-                                <button type="submit" className="btn btn-save">SYNC_DATABASE</button>
-                            </form>
+        <div className="grid">
+            <div className="side-panel">
+                <div className="card">
+                    <h2>DEPLOY_MISSION_CORE</h2>
+                    <form onSubmit={handleSaveChallenge}>
+                        <div className="form-group-row">
+                            <div style={{flex:1}}><label>LVL_NUM</label><input type="number" value={form.level_num} onChange={e => setForm({...form, level_num: e.target.value})} required /></div>
+                            <div style={{flex:2}}><label>CATEGORY</label>
+                                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate">Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                </select>
+                            </div>
                         </div>
-
-                        <div className="card">
-                            <h2>PLAYER_OVERRIDE</h2>
-                            <form onSubmit={handleUpdateUser}>
-                                <div className="form-group-row">
-                                    <div style={{flex:1}}><label>ID</label><input type="number" value={userForm.user_id} className="input-readonly" readOnly /></div>
-                                    <div style={{flex:1}}>
-                                        <label>ROLE</label>
-                                        <select value={userForm.new_role} onChange={e => setUserForm({...userForm, new_role: parseInt(e.target.value)})}>
-                                            <option value={0}>PLAYER</option>
-                                            <option value={1}>ADMIN</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <label>NEW_CODENAME</label>
-                                <input type="text" value={userForm.new_username} onChange={e => setUserForm({...userForm, new_username: e.target.value})} required />
-                                <label>NEW_ACCESS_KEY</label>
-                                <input type="text" value={userForm.new_password} onChange={e => setUserForm({...userForm, new_password: e.target.value})} placeholder="Keep blank to stay same" />
-                                <label>SCORE_OVERRIDE</label>
-                                <input type="number" value={userForm.new_score} onChange={e => setUserForm({...userForm, new_score: parseInt(e.target.value) || 0})} />
-                                <button type="submit" className="btn btn-edit">UPDATE_CREDENTIALS</button>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* --- Main Panel: Tables --- */}
-                    <div className="main-panel">
-                        <div className="card">
-                            <h2>MISSION_DATA_CORE</h2>
-                            <div className="table-responsive">
-                                <table className="fixed-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{width: '8%'}}>LVL</th>
-                                            <th style={{width: '22%'}}>TITLE</th>
-                                            <th style={{width: '25%'}}>IDENTIFIER</th>
-                                            <th style={{width: '25%'}}>ACCESS_KEY</th>
-                                            <th style={{width: '20%'}}>OPERATIONS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {challenges.map(c => (
-                                            <tr key={c.level_num}>
-                                                <td><strong>{c.level_num}</strong></td>
-                                                <td className="truncate-cell" title={c.title}>{c.title}</td>
-                                                <td className="truncate-cell" style={{color:'#10b981'}}><code>{c.target_identifier}</code></td>
-                                                <td className="truncate-cell" style={{color:'#60a5fa'}}>{c.access_key}</td>
-                                                <td>
-                                                    <button className="action-link" onClick={() => setForm(c)}>EDIT</button>
-                                                    <button className="action-link btn-del" onClick={() => handleDeleteChallenge(c.level_num)}>DEL</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        
+                        <label>TITLE</label>
+                        <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required />
+                        
+                        <label>DESCRIPTION</label>
+                        <textarea rows="2" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+                        
+                        <div className="form-group-row">
+                            <div style={{flex:1}}><label>BASE_POINTS</label><input type="number" value={form.base_points} onChange={e => setForm({...form, base_points: e.target.value})} /></div>
+                            <div style={{flex:1}}><label>SQL_LOGIC</label>
+                                <select value={form.sql_logic} onChange={e => setForm({...form, sql_logic: e.target.value})}>
+                                    <option value="string">String Match</option>
+                                    <option value="result">Result Set Match</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div className="card">
-                            <h2>OPERATOR_REGISTRY</h2>
-                            <div className="table-responsive">
-                                <table className="fixed-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{width: '10%'}}>ID</th>
-                                            <th style={{width: '25%'}}>CODENAME</th>
-                                            <th style={{width: '15%'}}>ROLE</th>
-                                            <th style={{width: '20%'}}>SCORE</th>
-                                            <th style={{width: '30%'}}>OPERATIONS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {players.map(p => (
-                                            <tr key={p.id}>
-                                                <td>#{p.id}</td>
-                                                <td style={{color:'#fff'}}>{p.username}</td>
-                                                <td><span className={p.role === 1 ? 'badge-admin' : 'badge-user'}>{p.role === 1 ? 'ADMIN' : 'PLAYER'}</span></td>
-                                                <td style={{color:'#fbbf24'}}>{p.score?.toLocaleString()}</td>
-                                                <td>
-                                                    <button className="action-link" onClick={() => prepareEditPlayer(p)}>EDIT</button>
-                                                    {p.role !== 1 && (
-                                                        <>
-                                                            <button className="action-link" onClick={() => handlePlayerAction('make_admin', p.id)}>+ADM</button>
-                                                            <button className="action-link btn-del" onClick={() => handlePlayerAction('ban', p.id)}>BAN</button>
-                                                        </>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                        <label>QUERY_TEMPLATE</label>
+                        <input type="text" placeholder="SELECT * FROM..." value={form.query_template} onChange={e => setForm({...form, query_template: e.target.value})} />
+                        
+                        <label style={{color: '#fbbf24'}}>TARGET_IDENTIFIER (EXPECTED)</label>
+                        <input type="text" value={form.target_identifier} onChange={e => setForm({...form, target_identifier: e.target.value})} required />
+                        
+                        {/* --- ส่วนที่แก้ไข: จัดการ FLAG_VALUE (Array) ใน Input --- */}
+                        <label style={{color: '#fbbf24'}}>FLAG_VALUE (ARRAY: separate with comma)</label>
+                        <input 
+                            type="text" 
+                            placeholder="flag1, flag2" 
+                            /* ถ้าข้อมูลเป็น Array ให้ join เป็น String เพื่อให้พิมพ์แก้ได้ */
+                            value={Array.isArray(form.flag_value) ? form.flag_value.join(', ') : form.flag_value || ''} 
+                            onChange={e => setForm({...form, flag_value: e.target.value})} 
+                        />
+                        <small style={{color:'#64748b', display:'block', marginBottom:'10px'}}>* Example: flag_1, flag_2</small>
+
+                        <div className="form-group-row">
+                            <div style={{flex:1}}><label>HINT_1</label><input type="text" value={form.hint_1} onChange={e => setForm({...form, hint_1: e.target.value})} /></div>
+                            <div style={{flex:1}}><label>HINT_2</label><input type="text" value={form.hint_2} onChange={e => setForm({...form, hint_2: e.target.value})} /></div>
                         </div>
+
+                        <button type="submit" className="btn btn-save">SYNC_DATABASE</button>
+                    </form>
+                </div>
+            </div>
+
+            <div className="main-panel">
+                <div className="card">
+                    <h2>MISSION_DATA_CORE</h2>
+                    <div className="table-responsive">
+                        <table className="fixed-table">
+                            <thead>
+                                <tr>
+                                    <th style={{width: '8%'}}>LVL</th>
+                                    <th style={{width: '22%'}}>TITLE</th>
+                                    <th style={{width: '25%'}}>IDENTIFIER</th>
+                                    <th style={{width: '25%'}}>FLAG_VALUE</th>
+                                    <th style={{width: '20%'}}>OPERATIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {challenges.map(c => (
+                                    <tr key={c.level_num}>
+                                        <td><strong>{c.level_num}</strong></td>
+                                        <td className="truncate-cell" title={c.title}>{c.title}</td>
+                                        <td className="truncate-cell" style={{color:'#10b981'}}><code>{c.target_identifier}</code></td>
+                                        {/* --- ส่วนที่แก้ไข: แสดงผล FLAG_VALUE ในตาราง --- */}
+                                        <td className="truncate-cell" style={{color:'#60a5fa'}}>
+                                            {Array.isArray(c.flag_value) ? c.flag_value.join(' | ') : c.flag_value}
+                                        </td>
+                                        <td>
+                                            <button className="action-link" onClick={() => setForm(c)}>EDIT</button>
+                                            <button className="action-link btn-del" onClick={() => handleDeleteChallenge(c.level_num)}>DEL</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-            
-            <style>{`
-                .truncate-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
-                .fixed-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
-                .input-readonly { background: #1e293b !important; color: #94a3b8 !important; cursor: not-allowed; }
-                .form-group-row { display: flex; gap: 10px; margin-bottom: 5px; }
-                .live-tag { font-size: 10px; background: #ef4444; color: white; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 10px; animation: pulse 2s infinite; }
-                @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-                .table-responsive { overflow-x: auto; }
-            `}</style>
         </div>
+    </div>
+</div>
     );
 };
 

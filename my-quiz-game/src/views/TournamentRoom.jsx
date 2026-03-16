@@ -33,13 +33,6 @@ const TournamentRoom = () => {
 
   const exitMission = async (user) => {
     socket.emit("leave_tournament", { roomId });
-    try {
-      await fetch(`${API}/api/admin/players/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset', id: user?.id })
-      });
-    } catch (e) { console.error("EXIT_ERROR:", e); }
   };
 
   useEffect(() => {
@@ -60,9 +53,25 @@ const TournamentRoom = () => {
       socket.off("countdown");
       socket.off("start_match");
       socket.off("tournament_update");
-      socket.off("match_finished");
-      socket.off("opponent_left");
+      socket.on("match_finished", (data) => {
+        // data ควรมี { winnerId, p1Score, p2Score, ... } จาก Backend
+        setWinnerData(data); 
+        setGameEnded(true);
+      });
+      socket.on("opponent_left", () => {
+        if (!gameEnded) { // 👈 ถ้าเกมยังไม่จบ ค่อยจัดการเรื่องคนออก
+          if (isStarted) {
+            setWinnerData({ winnerId: currentUser.id, reason: "OPPONENT_DISCONNECTED" });
+            setGameEnded(true);
+          } else {
+            setPlayer2(null);
+            setIsReady(false);
+          }
+        }
+        // ถ้า gameEnded เป็น true แล้ว ไม่ต้องทำอะไร ปล่อยให้ Modal โชว์คะแนนค้างไว้แบบนั้น
+      });
       socket.off("kicked");
+
     };
   }, []);
 
@@ -344,15 +353,23 @@ return (
 
       {gameEnded && (
         <div className="hint-modal">
-            <div className="hint-box result-card">
-                <div className="hint-header">MISSION_COMPLETE</div>
-                <div className="hint-content">
-                    <h1>{winnerData?.winnerId === currentUser?.id ? "🏆 VICTORY" : "💀 DEFEAT"}</h1>
-                    <p>FINAL_SCORE: {player1?.score} PTS</p>
-                    {winnerData?.reason && <p className="text-small">({winnerData.reason})</p>}
-                </div>
-                <button onClick={handleCleanExit} className="btn-execute-main">RETURN_TO_DASHBOARD</button>
+          <div className="hint-box result-card">
+            <div className="hint-header">MISSION_COMPLETE</div>
+            <div className="hint-content">
+              {/* ✅ เช็คจาก winnerData ที่ส่งมาจาก Server เท่านั้น */}
+              <h1 className={winnerData?.winnerId === currentUser?.id ? "text-victory" : "text-defeat"}>
+                {winnerData?.winnerId === currentUser?.id ? "🏆 VICTORY" : "💀 DEFEAT"}
+              </h1>
+              
+              <div className="final-stats">
+                <p>YOUR_SCORE: {winnerData?.p1Score ?? player1?.score} PTS</p>
+                <p>OPPONENT_SCORE: {winnerData?.p2Score ?? player2?.score} PTS</p>
+              </div>
+
+              {winnerData?.reason && <p className="text-small">REASON: {winnerData.reason}</p>}
             </div>
+            <button onClick={handleCleanExit} className="btn-execute-main">RETURN_TO_DASHBOARD</button>
+          </div>
         </div>
       )}
     </div>

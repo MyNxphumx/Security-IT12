@@ -224,22 +224,28 @@ table th, table td {
 /* เพิ่มเติมในไฟล์ CSS */
 
 /* บังคับให้คอลัมน์ที่ยาวเกินไปมีการตัดคำ (ถ้าไม่ต้องการให้ตารางกว้างเกินหน้าจอ) */
+/* 1. ส่วนทั่วไป: ปรับให้ td ยอมให้ข้อความยาวได้ถ้าจำเป็น */
 .explorer-table td {
-    max-width: 300px; /* ปรับขนาดตามความเหมาะสม */
+    max-width: 300px; 
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap; /* ป้องกันการขึ้นบรรทัดใหม่เพื่อให้ตารางดูสะอาด */
+    text-overflow: ellipsis; /* ตัวนี้คือตัวที่ทำให้เกิด ... */
+    white-space: nowrap; 
 }
 
-/* ยกเว้น ACCESS_KEY ให้เห็นชัดๆ */
-.explorer-table td:nth-child(6) { /* ตำแหน่งของ access_key ในลิสต์ที่กรองไว้ */
-    font-family: 'Courier New', monospace;
-    color: #fbbf24;
-    opacity: 1;
+/* 2. ✅ เพิ่ม Class ใหม่เพื่อบังคับให้โชว์ทั้งหมด */
+.full-text-display {
+    white-space: normal;       /* ยอมให้ขึ้นบรรทัดใหม่ได้ถ้าข้อความยาวเกิน */
+    word-break: break-all;     /* ถ้าเป็นรหัสยาวๆ ไม่มีช่องว่าง ให้หักคำได้ */
+    font-family: 'Fira Code', monospace;
+    color: #fbbf24;            /* สีทองให้เห็นชัดๆ */
+    opacity: 1 !important;     /* ไม่ให้จาง */
 }
 
-/* Tooltip เมื่อเอาเมาส์ไปชี้ข้อความที่โดนตัด ... */
-.explorer-table td span[title] {
-    cursor: help;
-    border-bottom: 1px dotted #64748b;
+/* 3. หรือเลือกเจาะจงคอลัมน์ในตาราง (สมมติ target_identifier อยู่ช่อง 5 และ flag_value อยู่ช่อง 6) */
+.explorer-table td:nth-child(5), 
+.explorer-table td:nth-child(6) {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;       /* ไม่ต้องใส่ ... และยอมให้ยืดได้ */
+    min-width: 150px;
 }

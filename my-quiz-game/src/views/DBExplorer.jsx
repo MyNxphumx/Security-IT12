@@ -57,25 +57,26 @@ const maskSensitive = (key, value) => {
     if (value === null || value === undefined) return "NULL";
     const k = key.toLowerCase();
 
-    // 1. แสดงสถานะ Online/Offline
+    // 1. สถานะ Online/Offline (เหมือนเดิม)
     if (k === 'effectively_online' || k === 'is_online') {
         return value ? <span className="status-online">● ONLINE</span> : <span className="status-offline">○ OFFLINE</span>;
     }
 
-    // 2. PASSWORD (ของ Players) ให้บังไว้เหมือนเดิม
+    // 2. PASSWORD (เหมือนเดิม)
     if (k === 'password') {
         return <span className="secured-text">{String(value).substring(0, 8)}... [SECURED]</span>;
     }
 
-    // 3. ACCESS_KEY (ของ Challenges) ให้แสดงค่าทั้งหมดตามที่คุณต้องการ
-    if (k === 'access_key') {
-        return <span className="secured-text" style={{ opacity: 1 }}>{String(value)}</span>;
+    // 3. ✅ แสดงค่าทั้งหมดสำหรับ FLAG_VALUE และ TARGET_IDENTIFIER
+    // เพิ่ม 'target_identifier' และ 'flag_value' ในเงื่อนไขนี้
+    if (k === 'flag_value' || k === 'access_key' || k === 'target_identifier') {
+        return <span className="full-text-display">{String(value)}</span>;
     }
 
-    // 4. ส่วนที่ต้องการให้ยาวเกินแล้วใส่ ... (HINT, QUERY, EXPLANATION, DESCRIPTION)
+    // 4. ส่วนที่ยังต้องการให้ตัดข้อความ (Truncate)
     const truncateFields = ['hint_1', 'hint_2', 'query_template', 'explanation', 'description', 'title'];
     if (truncateFields.includes(k)) {
-        const maxLength = 30; // ตั้งค่าความยาวที่ต้องการให้ตัด
+        const maxLength = 30;
         const text = String(value);
         return text.length > maxLength ? (
             <span title={text}>{text.substring(0, maxLength)}...</span>
@@ -88,13 +89,26 @@ const maskSensitive = (key, value) => {
 };
 
 // --- ปรับปรุงส่วนการแสดงผล DynamicTable ---
+// ภายในไฟล์ DBExplorer.js ส่วน DynamicTable
 const DynamicTable = ({ title, data }) => {
     if (data.length === 0) return <div className="no-data">[ NO_DATA_STREAMING ]</div>;
 
-    // กรองเฉพาะคอลัมน์ที่ต้องการแสดงสำหรับ MISSION_CHALLENGES
-    const headers = title === "mission_challenges" 
-        ? ["id", "level_num", "title", "description", "target_identifier", "access_key", "hint_1", "hint_2", "query_template", "explanation", "base_points", "category"]
-        : Object.keys(data[0]);
+    // --- จุดที่แก้ไข: กำหนด Headers สำหรับ MISSION_CHALLENGES ตามที่คุณต้องการ ---
+    let headers;
+    if (title === "mission_challenges") {
+        headers = [
+        "id", 
+        "level_num", 
+        "title", 
+        "description", 
+        "target_identifier", 
+        "flag_value", // ✅ เปลี่ยนจาก access_key เป็น flag_value
+        "base_points", 
+        "category"
+        ];
+    } else {
+        headers = Object.keys(data[0]);
+    }
 
     return (
         <div className="table-container shadow-fx">
@@ -106,7 +120,12 @@ const DynamicTable = ({ title, data }) => {
                 <table className="explorer-table">
                     <thead>
                         <tr>
-                            {headers.map(key => <th key={key}>{key.toUpperCase()}</th>)}
+                            {headers.map(key => (
+                                        <th key={key}>
+                                            {/* ✅ แสดงชื่อคอลัมน์เป็นตัวพิมพ์ใหญ่ตรงๆ ได้เลย */}
+                                            {key.toUpperCase()}
+                                        </th>
+                                    ))}
                         </tr>
                     </thead>
                     <tbody>
