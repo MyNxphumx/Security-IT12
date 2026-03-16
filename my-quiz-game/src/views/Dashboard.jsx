@@ -130,11 +130,14 @@ if (loading) {
     return <div className="error-screen">SYSTEM_FAILURE: {error}</div>;
   }
 
-  const { player, totalLevels, challenges } = data;
+const { player, challenges } = data; // ดึง challenges ออกมา
   const currentStep = player.current_step || 0;
-  const total = totalLevels || 30;
-  const progressPct = Math.min(100, Math.round((currentStep / total) * 100)) || 0;
 
+  // ✅ แก้ไข: ใช้จำนวนด่านจริงจาก challenges.length ถ้าไม่มีให้ใช้ totalLevels จาก backend หรือ default ที่ 1
+  const total = challenges?.length || data.totalLevels || 1; 
+  
+  // คำนวณเปอร์เซ็นต์ (ปัจจุบันทำไปแล้วกี่ด่าน / จำนวนด่านทั้งหมด)
+  const progressPct = Math.min(100, Math.round((currentStep / total) * 100)) || 0;
   const categories = {
     Beginner: challenges?.filter((c) => c.category === "Beginner") || [],
     Intermediate: challenges?.filter((c) => c.category === "Intermediate") || [],
@@ -215,6 +218,7 @@ if (loading) {
             <div className="progress-section">
               <div className="progress-info">
                 <span>SYSTEM_BREACH_LEVEL</span>
+              <span className="node-count-text">[{currentStep}/{total}]</span> 
                 <span>{progressPct}%</span>
               </div>
               <div className="progress-container">

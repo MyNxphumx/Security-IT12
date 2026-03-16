@@ -281,7 +281,7 @@ const Challenge = () => {
             <button className="btn-execute" onClick={() => {
               const nextLevel = parseInt(level) + 1;
               setResultDialog({ open: false, query: "", data: [] });
-              if (nextLevel > 30) navigate("/dashboard");
+              if (nextLevel > 25) navigate("/dashboard");
               else { setTime(0); sessionStorage.removeItem("hacker_timer"); navigate(`/challenge/${nextLevel}`); }
             }}>NEXT_PHASE()</button>
           </div>

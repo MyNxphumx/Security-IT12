@@ -128,16 +128,18 @@ io.on("connection", (socket) => {
     setTimeout(() => syncRoomPlayers(roomId), 100);
   });
 
-  socket.on("player_ready", async ({ roomId }) => {
+socket.on("player_ready", async ({ roomId }) => {
     if (socket.playerData) socket.playerData.isReady = true;
     const allPlayers = syncRoomPlayers(roomId);
     const readyPlayers = allPlayers.filter(p => p.isReady === true);
     
     if (readyPlayers.length >= 2) {
       try {
+        // ในโหมดแข่ง (Tournament) ยังคงจำกัดไว้ที่ 10 ข้อ (4+3+3)
         const beg = await pool.query("SELECT id FROM challenges WHERE category = 'Beginner' ORDER BY RANDOM() LIMIT 4");
         const inter = await pool.query("SELECT id FROM challenges WHERE category = 'Intermediate' ORDER BY RANDOM() LIMIT 3");
         const adv = await pool.query("SELECT id FROM challenges WHERE category = 'Advanced' ORDER BY RANDOM() LIMIT 3");
+        
         const matchSequence = [...beg.rows, ...inter.rows, ...adv.rows].map(r => r.id);
 
         let count = 5;
@@ -258,6 +260,7 @@ app.post('/api/register', async (req, res) => {
 
 
 // --- [AUTH API] ---
+// --- [AUTH API] ---
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -271,13 +274,17 @@ app.post('/api/login', async (req, res) => {
 
         await pool.query('UPDATE players SET is_online = true, last_seen = NOW() WHERE id = $1', [user.id]);
         
+        // แก้ไขตรงนี้: ดึงด่านทั้งหมดที่มีใน DB มาจัดลำดับ
         const allChallenges = await pool.query('SELECT id, category FROM challenges');
         const rows = allChallenges.rows;
+        
         const finalSequence = [
           ...shuffleArray(rows.filter(c => c.category === 'Beginner').map(c => c.id)),
           ...shuffleArray(rows.filter(c => c.category === 'Intermediate').map(c => c.id)),
           ...shuffleArray(rows.filter(c => c.category === 'Advanced').map(c => c.id))
         ];
+
+        // บันทึกลง Database (ตอนนี้จะมีความยาวเท่ากับจำนวนโจทย์ทั้งหมดใน DB แล้ว)
         await pool.query('UPDATE players SET shuffled_sequence = $1, current_step = 0 WHERE id = $2', [finalSequence, user.id]);
 
         io.emit("update_data"); 
