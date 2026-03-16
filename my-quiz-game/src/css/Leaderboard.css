@@ -157,9 +157,10 @@
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 4px;
-    overflow: hidden;
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     margin-bottom: 30px;
+
+    overflow-x: hidden;
 }
 
 .rank-table {
@@ -251,4 +252,22 @@
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
+}
+
+@media (max-width: 600px) {
+    .rank-table {
+        min-width: 500px; /* บังคับความกว้างขั้นต่ำเพื่อให้เห็นชื่อชัดๆ */
+    }
+    
+    .header-section h1 {
+        font-size: 1.5rem; /* ลดขนาดหัวข้อลงในมือถือ */
+    }
+
+    .rank-row td {
+        padding: 12px 10px; /* ลด padding เพื่อประหยัดพื้นที่ */
+    }
+
+    .codename {
+        font-size: 0.9rem; /* ลดขนาดชื่อโค้ดเนม */
+    }
 }

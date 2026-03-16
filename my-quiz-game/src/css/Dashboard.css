@@ -756,3 +756,427 @@ html,body{
   background:rgba(255,71,87,0.1);
   box-shadow:0 0 10px rgba(255,71,87,0.6);
 }
+
+.online-panel {
+  position: fixed;
+  left: 20px;
+  top: 100px; /* ปรับตามความสูง Navbar */
+  width: 180px;
+  background: rgba(0, 20, 0, 0.8);
+  border: 1px solid #00ff41;
+  padding: 10px;
+  z-index: 100;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.panel-header {
+  color: #00ff41;
+  font-size: 0.8rem;
+  border-bottom: 1px solid #00ff41;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  font-weight: bold;
+}
+
+.online-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.online-user {
+  color: #fff;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+  text-shadow: 0 0 5px #00ff41;
+}
+
+.user-prefix {
+  color: #00ff41;
+  margin-right: 5px;
+}
+
+/* ตกแต่ง Scrollbar ให้เข้ากับธีม */
+.online-list::-webkit-scrollbar {
+  width: 3px;
+}
+.online-list::-webkit-scrollbar-thumb {
+  background: #00ff41;
+}
+
+.btn-invite-mini {
+  background: transparent;
+  border: 1px solid #00ff41;
+  color: #00ff41;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-invite-mini:hover {
+  background: #b79dff;
+  color: #000;
+  box-shadow: 0 0 10px #b79dff;
+}
+
+.online-user {
+  align-items: center;
+}
+
+.tournament-card-container {
+  margin-top: 30px;
+  width: 100%;
+
+}
+
+.tournament-hero-card {
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(0, 50, 20, 0.8));
+  border: 1px solid #8b62fc;
+  border-radius: 8px;
+  padding: 40px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.tournament-hero-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+  border-color: #fff;
+}
+
+.badge-match {
+  background: #ff003c;
+  color: #fff;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  display: inline-block;
+  margin-bottom: 15px;
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+}
+
+.btn-enter-tournament {
+  margin-top: 20px;
+  padding: 10px 25px;
+  border: 1px solid #ffffff;
+  color: #8b62fc;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.tournament-hero-card:hover .btn-enter-tournament {
+  background: #8b62fc;
+  color: #ffffff;
+}
+
+/* 📟 Invite Modal Styles */
+.invite-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(8px);
+}
+
+.invite-dialog {
+  background: #050505;
+  border: 2px solid #00f3ff;
+  width: 420px;
+  padding: 0;
+  font-family: 'Courier New', monospace;
+  position: relative;
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.4);
+}
+
+.dialog-header {
+  background: #00f3ff;
+  color: #000;
+  padding: 8px 15px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  letter-spacing: 2px;
+}
+
+.dialog-content {
+  padding: 30px 20px;
+  text-align: center;
+  color: #fff;
+}
+
+.challenger-name {
+  color: #00f3ff;
+  font-size: 1.8rem;
+  margin: 15px 0;
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+}
+
+.room-id-text {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.dialog-actions {
+  display: flex;
+  border-top: 1px solid #333;
+}
+
+.btn-dialog-accept, .btn-dialog-decline {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn-dialog-accept {
+  background: #00f3ff;
+  color: #000;
+}
+
+.btn-dialog-accept:hover {
+  background: #fff;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+}
+
+.btn-dialog-decline {
+  background: transparent;
+  color: #ff4444;
+}
+
+.btn-dialog-decline:hover {
+  background: #ff4444;
+  color: #000;
+}
+
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ───────────────── RESPONSIVE DESIGN ───────────────── */
+
+/* 💻 สำหรับหน้าจอขนาดกลาง (Tablets/Small Laptops) */
+@media (max-width: 1100px) {
+  .hero-grid {
+    grid-template-columns: 1fr; /* ปรับเป็นคอลัมน์เดียว */
+  }
+
+  .online-panel {
+    position: static; /* เลิกใช้ Fixed เพื่อไม่ให้ทับ content */
+    width: 100%;
+    margin-bottom: 20px;
+    top: 0;
+  }
+
+  .online-list {
+    display: flex;
+    gap: 15px;
+    max-height: 60px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+
+  .online-user {
+    white-space: nowrap;
+    background: rgba(0, 255, 65, 0.1);
+    padding: 5px 10px;
+    border-radius: 4px;
+  }
+}
+
+/* 📱 สำหรับหน้าจอขนาดเล็ก (Mobile) */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 15px;
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    flex-direction: column; /* เรียง Navbar เป็นแนวตั้ง */
+    gap: 10px;
+  }
+
+  .nav-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .btn-nav {
+    margin-left: 0;
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .container {
+    margin: 20px auto;
+    padding: 0 15px;
+  }
+
+  .welcome-card {
+    padding: 20px;
+  }
+
+  .welcome-card h1 {
+    font-size: 1.2rem;
+  }
+
+  .stat-val {
+    font-size: 1.4rem;
+  }
+
+  /* ปรับ Category Selection ให้เล็กลง */
+  .category-selection-grid {
+    grid-template-columns: 1fr; /* การ์ดเลือกด่านเต็มจอ */
+    margin-top: 30px;
+    gap: 15px;
+  }
+
+  .cat-card {
+    padding: 20px;
+  }
+
+  /* ปรับ Level Grid (ด่านที่เลือกแล้ว) */
+  .level-grid {
+    grid-template-columns: 1fr; /* ด่านเรียงเป็นแถวเดียวลงมา */
+  }
+
+  .tournament-hero-card {
+    padding: 25px 15px;
+  }
+
+  .tournament-hero-card h2 {
+    font-size: 1.2rem;
+  }
+
+  /* ปรับ Invite Modal ให้เต็มจอเล็ก */
+  .invite-dialog {
+    width: 90%;
+    max-width: 350px;
+  }
+
+  .challenger-name {
+    font-size: 1.4rem;
+  }
+}
+
+/* 📟 สำหรับเครื่องที่หน้าจอแคบมาก (Small Mobile) */
+@media (max-width: 480px) {
+  .brand {
+    font-size: 12px;
+  }
+
+  .admin-group {
+    display: flex !important;
+    width: 100%;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .btn-tournament-nav {
+    width: 100%;
+  }
+
+  .list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+/* คลุมพื้นที่ทั้งหมดและจัดให้อยู่กลางจอ */
+.initializing-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #020617; /* สีมืดแบบดั้งเดิมของคุณ */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    font-family: 'Fira Code', monospace;
+}
+
+/* ข้อความ Loading ที่ดูเหมือน Terminal */
+.loader-text {
+    color: #10b981; /* สีเขียว Neon */
+    font-size: 1.2rem;
+    letter-spacing: 4px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    animation: blinkText 1s steps(2, start) infinite;
+}
+
+/* กรอบด้านนอกของ Progress Bar */
+.loader-bar-container {
+    width: 300px;
+    height: 4px;
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* เส้นที่วิ่งข้างใน */
+.loader-bar {
+    width: 100%;
+    height: 100%;
+    background: #10b981;
+    position: absolute;
+    left: -100%;
+    animation: loadingBar 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    box-shadow: 0 0 15px #10b981;
+}
+
+/* เพิ่ม UI ตกแต่งรอบๆ (Optional) */
+.initializing-screen::before {
+    content: "[ ACCESSING_KERNEL_MODULES... ]";
+    position: absolute;
+    bottom: 20px;
+    color: #334155;
+    font-size: 0.8rem;
+}
+
+/* Keyframes */
+@keyframes loadingBar {
+    0% { left: -100%; width: 30%; }
+    50% { left: 0%; width: 60%; }
+    100% { left: 100%; width: 30%; }
+}
+
+@keyframes blinkText {
+    to { visibility: hidden; }
+}
+
+/* สไตล์เอฟเฟกต์สแกนเส้นหน้าจอ */
+.initializing-screen::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // เพิ่มตัวเปลี่ยนหน้า
 import "../css/Register.css";
+import { API } from "../config"; // มั่นใจว่ามีไฟล์ config ที่เก็บ URL server ไว้
 
 const Register = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -18,8 +21,9 @@ const Register = () => {
     e.preventDefault();
     setError('');
     
+    // Client-side Validation
     if (formData.username.length < 3) {
-      setError("ERROR: INVALID_CODENAME_LENGTH");
+      setError("ERROR: INVALID_CODENAME_LENGTH (MIN 3)");
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -28,24 +32,45 @@ const Register = () => {
     }
 
     setLoading(true);
-    // Logic การส่งข้อมูล (API) ใส่ตรงนี้
-    setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const response = await fetch(`${API}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // สมัครสำเร็จ
+        alert("✅ ACCESS_GRANTED: สร้างบัญชีสำเร็จแล้ว บัญชาการได้!");
+        navigate("/login");
+      } else {
+        // ดัก Error จาก Backend เช่น ชื่อซ้ำ
+        setError(data.error || "SYSTEM_FAILURE");
+      }
+    } catch (err) {
+      setError("CONNECTION_LOST: ไม่สามารถติดต่อดาวเทียมได้");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="auth-page-wrapper">
-      {/* Background Gradient & CRT Effect */}
       <div className="cyber-bg"></div>
       <div className="scanlines"></div>
 
       <div className="terminal-card">
-        {/* Decorative Corners - ทำให้ดูเหมือน UI ยุคอนาคต */}
         <div className="corner tl"></div>
         <div className="corner tr"></div>
         <div className="corner bl"></div>
         <div className="corner br"></div>
 
-        {/* Header Section */}
         <div className="terminal-header">
           <h1 className="glitch-text" data-text="HACKER_KING">HACKER_KING</h1>
           <div className="terminal-status">
@@ -99,7 +124,6 @@ const Register = () => {
           </button>
         </form>
 
-        {/* Error Messaging */}
         {error && (
           <div className="terminal-error">
             <span className="error-prefix">!! ERROR:</span> {error}
@@ -107,9 +131,9 @@ const Register = () => {
         )}
 
         <div className="terminal-footer">
-          <a href="/login" className="terminal-link">
+          <button onClick={() => navigate("/login")} className="terminal-link" style={{background: 'none', border: 'none', cursor: 'pointer'}}>
             [ BACK_TO_AUTH_TERMINAL ]
-          </a>
+          </button>
         </div>
       </div>
     </div>

@@ -369,3 +369,101 @@ h2{
  background:var(--warning);
  color:#000;
 }
+
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+}
+.result-table th {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00ff00;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #00ff00;
+}
+.result-table td {
+  padding: 8px;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  color: #fff;
+}
+
+/* --- SPECIAL QUEST MODALS --- */
+
+/* กล่อง Modal พิเศษ (ใช้ร่วมกับ .hint-modal เดิม) */
+.special-offer-box {
+  border: 2px solid var(--primary) !important;
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.4) !important;
+  background: linear-gradient(to bottom, #020617, #12061f) !important;
+}
+
+.special-challenge-box {
+  border: 2px solid var(--secondary) !important;
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.4) !important;
+}
+
+/* หัวข้อสีม่วงสำหรับด่านโบนัส */
+.special-header-purple {
+  background: var(--primary);
+  color: #fff;
+  padding: 10px;
+  font-family: 'Orbitron';
+  margin: -30px -30px 20px -30px; /* ขยายให้เต็มขอบกล่อง */
+  text-align: center;
+  text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+/* หัวข้อสีฟ้าสำหรับหน้าทำโจทย์พิเศษ */
+.special-header-cyan {
+  background: var(--secondary);
+  color: #000;
+  padding: 10px;
+  font-family: 'Orbitron';
+  margin: -30px -30px 20px -30px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* ส่วนฟอร์มในด่านพิเศษ */
+.special-auth-area {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px dashed var(--secondary);
+}
+
+.special-auth-area label {
+  display: block;
+  font-size: 11px;
+  color: var(--secondary);
+  margin-bottom: 5px;
+  font-family: 'Orbitron';
+}
+
+/* ปุ่มยกเลิก/ปิด สำหรับโหมดพิเศษ */
+.btn-abort {
+  background: transparent;
+  border: 1px solid #64748b;
+  color: #64748b;
+  padding: 8px 20px;
+  cursor: pointer;
+  font-family: 'Orbitron';
+  transition: 0.3s;
+}
+
+.btn-abort:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(255, 71, 87, 0.1);
+}
+
+/* Animation สำหรับ Modal พิเศษให้ดูตื่นเต้น */
+@keyframes modal-appear {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.hint-box {
+  animation: modal-appear 0.2s ease-out;
+}

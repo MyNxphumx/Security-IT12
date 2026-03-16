@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from "socket.io-client"; // นำเข้า Socket.io
+import { io } from "socket.io-client"; 
 import '../css/AdminConsole.css';
 import { API } from "../config";
 
@@ -10,7 +10,7 @@ const socket = io(API);
 const AdminConsole = () => {
     const navigate = useNavigate();
     const [players, setPlayers] = useState([]);
-    const [challenges, setChallenges] = useState([]); // แก้ไข Error: มั่นใจว่ามี State นี้
+    const [challenges, setChallenges] = useState([]); 
     const [msg, setMsg] = useState("");
     
     // --- [FORMS STATE] ---
@@ -34,7 +34,7 @@ const AdminConsole = () => {
             if (cRes.ok) setChallenges(await cRes.json());
         } catch (err) {
             console.error("Fetch Error:", err);
-            setMsg("SYSTEM_ERROR: CONNECTION_FAILED");
+            setMsg("⚠️ SYSTEM_ERROR: CONNECTION_FAILED");
         }
     };
 
@@ -47,38 +47,58 @@ const AdminConsole = () => {
             fetchData();
         });
 
-        // Cleanup เมื่อปิด Component
         return () => socket.off("update_data");
     }, []);
 
     // --- [CHALLENGE ACTIONS] ---
     const handleSaveChallenge = async (e) => {
         e.preventDefault();
-        const res = await fetch(`${API}/api/admin/challenges/upsert`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form)
-        });
-        if (res.ok) {
-            setMsg(`CHALLENGE_SYNC: Level ${form.level_num} updated.`);
-            // ล้างฟอร์ม
-            setForm({ level_num: '', title: '', description: '', sql_logic: 'string', target_identifier: '', access_key: '', hint_1: '', hint_2: '', query_template: '', base_points: 0, category: 'Beginner' });
-            fetchData();
-            if (res.ok) {
-                // ...
-                socket.emit("admin_update"); // 📡 ส่งสัญญาณบอกว่า Admin มีการเปลี่ยนแปลงข้อมูล
-                fetchData();
-            }
+        
+        // แปลงค่าตัวเลขให้ปลอดภัย (ป้องกัน NaN)
+        const payload = {
+            ...form,
+            level_num: parseInt(form.level_num) || 0,
+            base_points: parseInt(form.base_points) || 0
+        };
 
+        try {
+            const res = await fetch(`${API}/api/admin/challenges/upsert`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                setMsg(`✅ CHALLENGE_SYNC: Level ${payload.level_num} updated.`);
+                // ล้างฟอร์มกลับเป็นค่าเริ่มต้น
+                setForm({ 
+                    level_num: '', title: '', description: '', 
+                    sql_logic: 'string', target_identifier: '', 
+                    access_key: '', hint_1: '', hint_2: '', 
+                    query_template: '', base_points: 0, category: 'Beginner' 
+                });
+                
+                socket.emit("admin_update"); 
+                fetchData();
+            } else {
+                setMsg("❌ ERROR: FAILED_TO_SYNC_DATABASE");
+            }
+        } catch (err) {
+            setMsg("⚠️ SYSTEM_ERROR: CONNECTION_FAILED");
         }
     };
 
     const handleDeleteChallenge = async (lvl) => {
         if (!window.confirm(`DELETE Level ${lvl}?`)) return;
-        const res = await fetch(`${API}/api/admin/challenges/delete/${lvl}`, { method: 'DELETE' });
-        if (res.ok) {
-            setMsg(`CHALLENGE_DELETED: Level ${lvl} removed.`);
-            fetchData();
+        try {
+            const res = await fetch(`${API}/api/admin/challenges/delete/${lvl}`, { method: 'DELETE' });
+            if (res.ok) {
+                setMsg(`🗑️ CHALLENGE_DELETED: Level ${lvl} removed.`);
+                socket.emit("admin_update");
+                fetchData();
+            }
+        } catch (err) {
+            setMsg("❌ ERROR: DELETE_FAILED");
         }
     };
 
@@ -91,39 +111,43 @@ const AdminConsole = () => {
             new_role: p.role,
             new_score: p.score
         });
-        setMsg(`EDIT_MODE: Operator #${p.id} active.`);
+        setMsg(`🛠️ EDIT_MODE: Operator #${p.id} active.`);
     };
 
     const handleUpdateUser = async (e) => {
         e.preventDefault();
-        const res = await fetch(`${API}/api/admin/players/update`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(userForm)
-        });
-        if (res.ok) {
-            setMsg(`CREDENTIALS_UPDATED: ${userForm.new_username} synchronised.`);
-            setUserForm({ user_id: '', new_username: '', new_password: '', new_role: 0, new_score: 0 });
-            fetchData();
-
+        try {
+            const res = await fetch(`${API}/api/admin/players/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userForm)
+            });
             if (res.ok) {
-                // ...
-                socket.emit("admin_update"); // 📡 ส่งสัญญาณเพื่อให้ Leaderboard ขยับทันที
+                setMsg(`🚀 CREDENTIALS_UPDATED: ${userForm.new_username} synchronised.`);
+                setUserForm({ user_id: '', new_username: '', new_password: '', new_role: 0, new_score: 0 });
+                socket.emit("admin_update"); 
                 fetchData();
             }
+        } catch (err) {
+            setMsg("❌ ERROR: UPDATE_FAILED");
         }
     };
 
     const handlePlayerAction = async (action, id) => {
         if (!window.confirm(`Confirm ${action.toUpperCase()} for Operator #${id}?`)) return;
-        const res = await fetch(`${API}/api/admin/players/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, id })
-        });
-        if (res.ok) {
-            setMsg(`SYSTEM: Action [${action}] executed.`);
-            fetchData();
+        try {
+            const res = await fetch(`${API}/api/admin/players/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, id })
+            });
+            if (res.ok) {
+                setMsg(`⚡ SYSTEM: Action [${action}] executed.`);
+                socket.emit("admin_update");
+                fetchData();
+            }
+        } catch (e) {
+            setMsg("❌ ERROR: ACTION_FAILED");
         }
     };
 
@@ -206,7 +230,7 @@ const AdminConsole = () => {
                                 <label>NEW_ACCESS_KEY</label>
                                 <input type="text" value={userForm.new_password} onChange={e => setUserForm({...userForm, new_password: e.target.value})} placeholder="Keep blank to stay same" />
                                 <label>SCORE_OVERRIDE</label>
-                                <input type="number" value={userForm.new_score} onChange={e => setUserForm({...userForm, new_score: parseInt(e.target.value)})} />
+                                <input type="number" value={userForm.new_score} onChange={e => setUserForm({...userForm, new_score: parseInt(e.target.value) || 0})} />
                                 <button type="submit" className="btn btn-edit">UPDATE_CREDENTIALS</button>
                             </form>
                         </div>
@@ -284,7 +308,7 @@ const AdminConsole = () => {
                 </div>
             </div>
             
-            <style jsx>{`
+            <style>{`
                 .truncate-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
                 .fixed-table { table-layout: fixed; width: 100%; border-collapse: collapse; }
                 .input-readonly { background: #1e293b !important; color: #94a3b8 !important; cursor: not-allowed; }

@@ -76,7 +76,22 @@
     padding: 20px;
     margin-bottom: 40px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    overflow: hidden; /* เปลี่ยนเป็น hidden เพื่อให้ scroll-wrapper คุมการเลื่อนแทน */
+}
+/* เพิ่มส่วนควบคุมการเลื่อนโดยเฉพาะ */
+.scroll-wrapper {
+    width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ปรับแต่ง Scrollbar แนวนอน */
+.scroll-wrapper::-webkit-scrollbar {
+    height: 6px;
+}
+.scroll-wrapper::-webkit-scrollbar-thumb {
+    background: var(--secondary);
+    border-radius: 10px;
 }
 
 .table-container h3 {
@@ -135,10 +150,13 @@ tr:hover {
     font-size: 18px;
     letter-spacing: 5px;
 }
-
-@media (max-width: 600px) {
-    .explorer-body { padding: 20px; }
-    .header-area { flex-direction: column; align-items: flex-start; gap: 15px; }
+@media (max-width: 768px) {
+    .explorer-table {
+        min-width: 1000px; /* บังคับให้ตารางกว้างพอจนเกิด scroll แนวนอน */
+    }
+    .explorer-body {
+        padding: 15px;
+    }
 }
 
 .effectively-online {
@@ -201,3 +219,27 @@ table th, table td {
                     padding: 2px 8px;
                     border-radius: 4px;
                 }
+
+
+/* เพิ่มเติมในไฟล์ CSS */
+
+/* บังคับให้คอลัมน์ที่ยาวเกินไปมีการตัดคำ (ถ้าไม่ต้องการให้ตารางกว้างเกินหน้าจอ) */
+.explorer-table td {
+    max-width: 300px; /* ปรับขนาดตามความเหมาะสม */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* ป้องกันการขึ้นบรรทัดใหม่เพื่อให้ตารางดูสะอาด */
+}
+
+/* ยกเว้น ACCESS_KEY ให้เห็นชัดๆ */
+.explorer-table td:nth-child(6) { /* ตำแหน่งของ access_key ในลิสต์ที่กรองไว้ */
+    font-family: 'Courier New', monospace;
+    color: #fbbf24;
+    opacity: 1;
+}
+
+/* Tooltip เมื่อเอาเมาส์ไปชี้ข้อความที่โดนตัด ... */
+.explorer-table td span[title] {
+    cursor: help;
+    border-bottom: 1px dotted #64748b;
+}

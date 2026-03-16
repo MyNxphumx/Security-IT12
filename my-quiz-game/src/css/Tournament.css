@@ -1,0 +1,443 @@
+/* --- Base Theme & Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;500&family=Sarabun:wght@300;400;600&display=swap');
+
+:root {
+  --primary-neon: #a855f7;
+  --secondary-neon: #22d3ee;
+  --success-neon: #00ff88;
+  --danger-neon: #ff4757;
+  --bg-dark: #020617;
+  --panel-bg: rgba(7, 12, 33, 0.9);
+}
+
+.tournament-container {
+  min-height: 100vh;
+  background-color: var(--bg-dark);
+  color: #f1f5f9;
+  font-family: 'Sarabun', sans-serif;
+  padding: 40px 24px;
+  position: relative;
+  overflow-x: hidden;
+  /* เพิ่มส่วนนี้เพื่อให้เนื้อหากลางจอ */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Ambient Background */
+.tournament-container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(168, 85, 247, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(34, 211, 238, 0.08) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+/* --- Status Header --- */
+.status-bar {
+  width: 100%;
+  max-width: 1200px;
+  background: rgba(7, 12, 33, 0.85);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-left: 4px solid var(--primary-neon);
+  padding: 20px 30px;
+  margin-bottom: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+
+.brand {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--primary-neon);
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  font-weight: bold;
+}
+
+.stats-group {
+  display: flex;
+  gap: 30px;
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* --- Match Layout --- */
+.match-grid {
+  width: 100%;
+  max-width: 1000px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 30px;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.player-panel {
+  background: var(--panel-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 12px;
+  transition: 0.4s ease;
+}
+
+.ready-glow { border-color: var(--success-neon) !important; box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+.ready-glow-remote { border-color: var(--secondary-neon) !important; box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
+
+/* --- Game Zone (ศูนย์กลางของปัญหา) --- */
+.game-zone {
+  width: 100%;
+  max-width: 800px; /* กำหนดความกว้างเพื่อให้กลางจอ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.battle-terminal {
+  width: 100%;
+  background: var(--panel-bg);
+  border: 1px solid var(--primary-neon);
+  padding: 30px;
+  border-radius: 15px;
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.1);
+}
+
+.speech-bubble {
+  background: rgba(0,0,0,0.3);
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid var(--success-neon);
+  margin-bottom: 20px;
+}
+
+.king-label {
+  color: var(--success-neon);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.game-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.input-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.hacker-input {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  padding: 12px;
+  color: var(--success-neon);
+  font-family: 'Fira Code', monospace;
+  outline: none;
+}
+
+.btn-execute-main {
+  background: var(--primary-neon);
+  color: white;
+  border: none;
+  padding: 15px;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.3s;
+}
+
+.btn-execute-main:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 20px var(--primary-neon);
+}
+
+.log-terminal {
+  margin-top: 20px;
+  background: #000;
+  padding: 15px;
+  border-radius: 5px;
+  font-family: 'Fira Code', monospace;
+}
+
+.query-text { color: var(--secondary-neon); word-break: break-all; }
+
+/* --- Invite Section --- */
+.invite-card {
+  width: 100%;
+  max-width: 500px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--primary-neon);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
+}
+/* คงเดิมส่วนที่เหลือจากไฟล์เก่าของคุณ */
+.btn-ready-primary {
+  background: transparent;
+  border: 2px solid var(--secondary-neon);
+  color: var(--secondary-neon);
+  padding: 20px 50px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.vs-divider {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 3rem;
+  color: #fff;
+  text-shadow: 0 0 20px var(--primary-neon);
+  animation: vs-pulse 2s infinite ease-in-out;
+}
+
+@keyframes vs-pulse { 50% { transform: scale(1.2); opacity: 0.6; } }
+
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.countdown-number {
+  font-size: 10rem;
+  font-family: 'Orbitron', sans-serif;
+  color: var(--secondary-neon);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse { 50% { transform: scale(1.1); } }
+
+/* --- ปุ่ม [ ABORT_MISSION ] ด้านบน --- */
+.btn-abort-link {
+  background: transparent;
+  border: none;
+  color: var(--danger-neon);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: 0.3s;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+}
+
+.btn-abort-link:hover {
+  border: 1px solid var(--danger-neon);
+  box-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
+  text-shadow: 0 0 5px var(--danger-neon);
+}
+
+
+.card-header-fx {
+  background: rgba(168, 85, 247, 0.2);
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  color: var(--primary-neon);
+  border-bottom: 1px solid var(--primary-neon);
+}
+
+/* ปุ่ม REFRESH เล็กๆ */
+.btn-refresh-scan {
+  background: var(--primary-neon);
+  border: none;
+  color: white;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-family: 'Fira Code', monospace;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.btn-refresh-scan:hover {
+  filter: brightness(1.2);
+}
+
+.target-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.1);
+  background: rgba(2, 6, 23, 0.5);
+}
+
+/* ปุ่ม INVITE */
+.btn-invite-action {
+  background: transparent;
+  border: 1px solid var(--secondary-neon);
+  color: var(--secondary-neon);
+  padding: 4px 12px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-invite-action:hover:not(.btn-disabled) {
+  background: var(--secondary-neon);
+  color: #000;
+  box-shadow: 0 0 10px var(--secondary-neon);
+}
+
+.btn-disabled {
+  border-color: #475569;
+  color: #475569;
+  cursor: not-allowed;
+}
+
+/* ปุ่ม ✖ DISCONNECT_TARGET */
+.btn-kick-opponent {
+  display: block;
+  width: fit-content;
+  margin: 15px auto 0;
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid var(--danger-neon);
+  color: var(--danger-neon);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-kick-opponent:hover {
+  background: var(--danger-neon);
+  color: white;
+  box-shadow: 0 0 15px var(--danger-neon);
+}
+
+/* ───────────────── TOURNAMENT RESPONSIVE ───────────────── */
+
+/* 📱 สำหรับหน้าจอ Tablet และ Mobile (ต่ำกว่า 1024px) */
+@media (max-width: 1024px) {
+  .match-grid {
+    grid-template-columns: 1fr; /* เปลี่ยนจาก 3 คอลัมน์เป็นแถวเดียว */
+    gap: 15px;
+    padding: 0 10px;
+  }
+
+  .vs-divider {
+    font-size: 1.5rem; /* ลดขนาด VS ลง */
+    margin: -10px 0;
+    z-index: 5;
+  }
+
+  .player-panel {
+    padding: 15px;
+  }
+
+  .status-bar {
+    padding: 15px;
+    flex-wrap: wrap; /* ให้ข้อมูลตกลงมาถ้าหน้าจอแคบ */
+    gap: 10px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .stats-group {
+    gap: 15px;
+    font-size: 0.9rem;
+  }
+}
+
+/* 📱 สำหรับหน้าจอมือถือ (ต่ำกว่า 768px) */
+@media (max-width: 768px) {
+  .tournament-container {
+    padding: 20px 10px;
+  }
+
+  .brand {
+    font-size: 0.8rem;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+
+  .btn-abort-link {
+    order: 3; /* ย้ายปุ่มยกเลิกไปไว้ล่างสุดของ Navbar */
+    width: 100%;
+    border: 1px solid rgba(255, 71, 87, 0.3);
+  }
+
+  /* ปรับแต่ง Terminal ให้พิมพ์ง่ายขึ้น */
+  .battle-terminal {
+    padding: 15px;
+    border-radius: 8px;
+  }
+
+  .speech-bubble {
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+
+  .hacker-input {
+    font-size: 16px; /* ป้องกัน iOS Auto-zoom เมื่อคลิก input */
+    padding: 10px;
+  }
+
+  .btn-execute-main {
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  /* ปรับ Modal ผลลัพธ์ */
+  .hint-box.result-card {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .hint-box.result-card h1 {
+    font-size: 2rem;
+  }
+
+  /* ปรับหน้าเชิญเพื่อน (Invite) */
+  .invite-card {
+    max-width: 100%;
+  }
+
+  .target-item {
+    flex-direction: column; /* ชื่อคนอยู่บน ปุ่มอยู่ล่าง */
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .action-btns {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .countdown-number {
+    font-size: 6rem;
+  }
+}
+
+/* 📟 สำหรับหน้าจอกลุ่มเล็กพิเศษ */
+@media (max-width: 400px) {
+  .stats-group {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .player-tag {
+    font-size: 0.8rem;
+  }
+  
+  .score-val {
+    font-size: 1rem;
+  }
+}

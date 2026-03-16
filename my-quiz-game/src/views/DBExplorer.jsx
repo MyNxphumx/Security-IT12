@@ -52,43 +52,77 @@ const DBExplorer = () => {
     };
 
     // --- ส่วนตารางและฟังก์ชัน Mask เหมือนเดิมที่คุณทำไว้ ---
-    const maskSensitive = (key, value) => {
-        if (value === null || value === undefined) return "NULL";
-        const k = key.toLowerCase();
-        if (k === 'effectively_online' || k === 'is_online') {
-            return value ? <span className="status-online">● ONLINE</span> : <span className="status-offline">○ OFFLINE</span>;
-        }
-        if (k.includes('password') || k.includes('access_key')) {
-            return <span className="secured-text">{String(value).substring(0, 8)}... [SECURED]</span>;
-        }
-        if (k === 'last_seen' && value) return new Date(value).toLocaleTimeString();
-        return String(value);
-    };
+// --- ปรับปรุงฟังก์ชัน Mask และจำกัดความยาวข้อความ ---
+const maskSensitive = (key, value) => {
+    if (value === null || value === undefined) return "NULL";
+    const k = key.toLowerCase();
 
-    const DynamicTable = ({ title, data }) => (
+    // 1. แสดงสถานะ Online/Offline
+    if (k === 'effectively_online' || k === 'is_online') {
+        return value ? <span className="status-online">● ONLINE</span> : <span className="status-offline">○ OFFLINE</span>;
+    }
+
+    // 2. PASSWORD (ของ Players) ให้บังไว้เหมือนเดิม
+    if (k === 'password') {
+        return <span className="secured-text">{String(value).substring(0, 8)}... [SECURED]</span>;
+    }
+
+    // 3. ACCESS_KEY (ของ Challenges) ให้แสดงค่าทั้งหมดตามที่คุณต้องการ
+    if (k === 'access_key') {
+        return <span className="secured-text" style={{ opacity: 1 }}>{String(value)}</span>;
+    }
+
+    // 4. ส่วนที่ต้องการให้ยาวเกินแล้วใส่ ... (HINT, QUERY, EXPLANATION, DESCRIPTION)
+    const truncateFields = ['hint_1', 'hint_2', 'query_template', 'explanation', 'description', 'title'];
+    if (truncateFields.includes(k)) {
+        const maxLength = 30; // ตั้งค่าความยาวที่ต้องการให้ตัด
+        const text = String(value);
+        return text.length > maxLength ? (
+            <span title={text}>{text.substring(0, maxLength)}...</span>
+        ) : text;
+    }
+
+    if (k === 'last_seen' && value) return new Date(value).toLocaleTimeString();
+    
+    return String(value);
+};
+
+// --- ปรับปรุงส่วนการแสดงผล DynamicTable ---
+const DynamicTable = ({ title, data }) => {
+    if (data.length === 0) return <div className="no-data">[ NO_DATA_STREAMING ]</div>;
+
+    // กรองเฉพาะคอลัมน์ที่ต้องการแสดงสำหรับ MISSION_CHALLENGES
+    const headers = title === "mission_challenges" 
+        ? ["id", "level_num", "title", "description", "target_identifier", "access_key", "hint_1", "hint_2", "query_template", "explanation", "base_points", "category"]
+        : Object.keys(data[0]);
+
+    return (
         <div className="table-container shadow-fx">
-            <div className="table-header-row">
-                <h3>TABLE_VIEW: {title.toUpperCase()}</h3>
+            <div className="table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h3 style={{ margin: 0 }}>TABLE_VIEW: {title.toUpperCase()}</h3>
                 <span className="live-indicator">LIVE_FEED</span>
             </div>
-            {data.length > 0 ? (
-                <div className="scroll-wrapper">
-                    <table className="explorer-table">
-                        <thead>
-                            <tr>{Object.keys(data[0]).map(key => <th key={key}>{key.toUpperCase()}</th>)}</tr>
-                        </thead>
-                        <tbody>
-                            {data.map((row, i) => (
-                                <tr key={i}>
-                                    {Object.entries(row).map(([key, val], idx) => <td key={idx}>{maskSensitive(key, val)}</td>)}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : <div className="no-data">[ NO_DATA_STREAMING ]</div>}
+            <div className="scroll-wrapper">
+                <table className="explorer-table">
+                    <thead>
+                        <tr>
+                            {headers.map(key => <th key={key}>{key.toUpperCase()}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.map((row, i) => (
+                            <tr key={i}>
+                                {headers.map((key, idx) => (
+                                    <td key={idx}>{maskSensitive(key, row[key])}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
+};
 
     // 🛡️ ถ้ายังไม่ผ่านการตรวจสอบสิทธิ์ ไม่ต้องเรนเดอร์เนื้อหา
     if (!isAuthorized) return null;

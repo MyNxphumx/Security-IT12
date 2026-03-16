@@ -7,6 +7,7 @@ import DBExplorer from './views/DBExplorer';
 import Challenge from './views/Challenge';
 import Leaderboard from './views/Leaderboard';
 import Register from './views/Register';
+import TournamentRoom from './views/TournamentRoom';
 import './App.css';
 
 function App() {
@@ -43,6 +44,8 @@ function App() {
         <Route path="/leaderboard" element={<Leaderboard />} />
 
         <Route path="/challenge/:id" element={<Challenge />} />
+
+      <Route path="/TournamentRoom/:roomId" element={<TournamentRoom />} />
 
       </Routes>
     </Router>

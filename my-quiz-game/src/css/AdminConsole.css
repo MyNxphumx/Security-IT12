@@ -84,6 +84,8 @@
     border-radius: 4px;
     margin-bottom: 25px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    /* เพิ่มบรรทัดนี้ */
+    overflow: hidden; 
 }
 
 .admin-body h2 {
@@ -281,24 +283,25 @@
     border-color: white;
 }
 /* Responsive */
-@media (max-width: 1100px) {
-    .admin-body .grid {
-        grid-template-columns: 1fr;
-    }
-    .side-panel {
-        order: 2;
-    }
-    .main-panel {
-        order: 1;
-    }
-}
-
 @media (max-width: 600px) {
-    .admin-body .card {
-        overflow-x: auto;
+    .admin-body {
+        padding: 10px; /* ลด padding หน้าจอลงเพื่อให้มีที่เหลือ */
     }
+    
+    .admin-body .card {
+        padding: 15px;
+        /* ลบ overflow-x: auto ตรงนี้ออก เพราะเราใช้ใน .table-responsive แล้ว */
+    }
+
     .admin-body table {
-        min-width: 600px;
+        /* บังคับให้ตารางมีความกว้างอย่างน้อย 800px เพื่อให้เกิดการเลื่อน */
+        min-width: 800px; 
+    }
+    
+    /* ปรับขนาดตัวอักษรในมือถือให้เล็กลงหน่อยเพื่อความสวยงาม */
+    .admin-body td, .admin-body th {
+        padding: 8px;
+        font-size: 11px;
     }
 }
 
@@ -308,9 +311,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 0; /* เทคนิคเพื่อให้ ellipsis ทำงานใน table-layout: fixed */
+    /* เปลี่ยนจาก 0 เป็นค่าประมาณหนึ่งเพื่อให้เห็นข้อความบ้าง */
+    max-width: 150px; 
 }
-
 .fixed-table {
     table-layout: fixed; /* บังคับความกว้างคอลัมน์ */
     width: 100%;
@@ -367,4 +370,39 @@
 .admin-body select option {
     background: #000;
     color: var(--neon);
+}
+
+/* บังคับให้หัวตารางค้างไว้เวลา Scroll */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto; /* เปิดให้เลื่อนซ้าย-ขวา */
+    -webkit-overflow-scrolling: touch; /* ให้เลื่อนใน iPhone ได้ลื่นๆ */
+    margin-bottom: 10px;
+}
+
+/* ปรับแต่ง Scrollbar แนวนอนให้สวยเหมือนแนวตั้งที่ทำไว้ */
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+}
+.table-responsive::-webkit-scrollbar-thumb {
+    background: var(--admin-red);
+    border-radius: 10px;
+}
+
+
+
+
+.fixed-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #1e293b; /* ต้องมีสีพื้นหลังเพื่อไม่ให้เห็นตัวหนังสือซ้อนกัน */
+}
+
+/* ทำให้รู้ว่าคลิก Edit ได้ */
+.fixed-table tbody tr {
+    cursor: default;
+}
+.fixed-table td strong {
+    color: var(--admin-red);
 }

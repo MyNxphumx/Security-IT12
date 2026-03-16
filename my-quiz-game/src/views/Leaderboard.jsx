@@ -31,10 +31,11 @@ const Leaderboard = () => {
                         return scoreB - scoreA;
                     }
 
-                    const levelA = a.level_reached || 0;
-                    const levelB = b.level_reached || 0;
+                    // ✅ ปรับมาใช้ current_step ในการ Sort
+                    const stepA = a.current_step || 0;
+                    const stepB = b.current_step || 0;
 
-                    return levelB - levelA;
+                    return stepB - stepA;
 
                 });
 
@@ -116,7 +117,7 @@ const Leaderboard = () => {
                                 <th>CODENAME</th>
                                 <th>
                                     <Target size={14} style={{marginRight:'5px'}} />
-                                    Max LEVEL
+                                    LEVEL
                                 </th>
                                 <th>MAX SCORE</th>
                             </tr>
@@ -127,7 +128,8 @@ const Leaderboard = () => {
 
                             {leaders.map((player, index) => {
 
-                                const bestLevel = player.level_reached || 0;
+                                // ✅ เปลี่ยนจาก level_reached เป็น current_step แล้ว -1
+                                const bestLevel = (player.current_step || 0) ;
 
                                 return (
 
@@ -144,7 +146,7 @@ const Leaderboard = () => {
                                         </td>
 
                                         <td className="level-cell">
-                                        PHASE_{Math.max(bestLevel - 1, 0).toString().padStart(2,'0')}
+                                            PHASE_{String(player.current_step || 0).padStart(2, '0')}
                                         </td>
 
                                         <td className="score-cell">
